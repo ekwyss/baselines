@@ -127,13 +127,18 @@ def log_params(params, logger=logger):
 def configure_her(params):
     env = cached_make_env(params['make_env'])
     env.reset()
+    # goal_indexes = params['goal_indexes']
+    policy_index = params['policy_index']
 
+    #can add policy index here for subgoal rewards****
     def reward_fun(ag_2, g, info):  # vectorized
         return env.compute_reward(achieved_goal=ag_2, desired_goal=g, info=info)
 
     # Prepare configuration for HER.
     her_params = {
         'reward_fun': reward_fun,
+        # 'policy_indexes': goal_indexes,
+        'policy_index': policy_index,
     }
     for name in ['replay_strategy', 'replay_k']:
         her_params[name] = params[name]
@@ -186,12 +191,15 @@ def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True):
 def configure_dims(params):
     env = cached_make_env(params['make_env'])
     env.reset()
-    obs, _, _, info = env.step(env.action_space.sample())
+    # obs, _, _, info = env.step(env.action_space.sample())
+    obs, _, _, info = env.step(env.action_space.sample(), 0)
 
     dims = {
         'o': obs['observation'].shape[0],
         'u': env.action_space.shape[0],
         'g': obs['desired_goal'].shape[0],
+        # 'g': obs['desired_goals'][0].shape[0],
+        # 'g': obs['desired_goal'][0].shape[0],
     }
     for key, value in info.items():
         value = np.array(value)

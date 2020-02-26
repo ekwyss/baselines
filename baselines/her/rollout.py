@@ -9,7 +9,7 @@ from baselines.her.util import convert_episode_to_batch_major, store_args
 class RolloutWorker:
 
     @store_args
-    def __init__(self, venv, policy, dims, logger, T, rollout_batch_size=1,
+    def __init__(self, venv, policies, dims, logger, T, rollout_batch_size=1,
                  exploit=False, use_target_net=False, compute_Q=False, noise_eps=0,
                  random_eps=0, history_len=100, render=False, monitor=False, **kwargs):
         """Rollout worker generates experience by interacting with one or many environments.
@@ -46,6 +46,11 @@ class RolloutWorker:
         self.initial_o = self.obs_dict['observation']
         self.initial_ag = self.obs_dict['achieved_goal']
         self.g = self.obs_dict['desired_goal']
+        #remove extra layer of array
+        self.gs = self.obs_dict['desired_goals']#[0]
+        # self.g_index = 0
+        # self.subgoal_timesteps = [[0],[0],[0]]
+        # self.g = self.gs[self.g_index].copy()
 
     def generate_rollouts(self):
         """Performs `rollout_batch_size` rollouts in parallel for time horizon `T` with the current
@@ -61,12 +66,24 @@ class RolloutWorker:
 
         # generate episodes
         obs, achieved_goals, acts, goals, successes = [], [], [], [], []
+        consistent_sgss = []
         dones = []
         info_values = [np.empty((self.T - 1, self.rollout_batch_size, self.dims['info_' + key]), np.float32) for key in self.info_keys]
         Qs = []
+        # print("new ep")
+        g_index = 0
         for t in range(self.T):
-            policy_output = self.policy.get_actions(
-                o, ag, self.g,
+            # policy_output = self.policy.get_actions(
+            #     # o, ag, self.gs[self.g_index],
+            #     # o, ag, self.g,
+            #     o, ag, self.gs[2],
+            #     compute_Q=self.compute_Q,
+            #     noise_eps=self.noise_eps if not self.exploit else 0.,
+            #     random_eps=self.random_eps if not self.exploit else 0.,
+            #     use_target_net=self.use_target_net)
+
+            policy_output = self.policies.get_actions(
+                o, ag, self.gs, g_index,
                 compute_Q=self.compute_Q,
                 noise_eps=self.noise_eps if not self.exploit else 0.,
                 random_eps=self.random_eps if not self.exploit else 0.,
@@ -86,10 +103,33 @@ class RolloutWorker:
             ag_new = np.empty((self.rollout_batch_size, self.dims['g']))
             success = np.zeros(self.rollout_batch_size)
             # compute new states and observations
-            obs_dict_new, _, done, info = self.venv.step(u)
+            obs_dict_new, reward, done, info = self.venv.step(u)
+
+            #TODO: All definitely only works for one env, extend for any num
+            # g_index_new = obs_dict_new['goal_index'] #make sure this doesn't change outside of this
+            # consistent_sgs = info[0]['consistent_subgoals'] 
+            consistent_sgs = np.array([i.get('consistent_subgoals', 0.0) for i in info])
+
             o_new = obs_dict_new['observation']
             ag_new = obs_dict_new['achieved_goal']
             success = np.array([i.get('is_success', 0.0) for i in info])
+
+            # self.g_index = g_index_new
+
+            #update goal/goal_index if we achieve a subgoal
+            if reward != -1 and g_index < len(self.gs[0])-1:#[0])-1:
+                g_index += 1
+                #would have to be of len(numenvs)
+                self.g = [self.gs[0][g_index]]
+
+            # #identify transition as candidate for subgoal experience replay
+            # for i in range(len(consistent_sgs)):
+            #     if consistent_sgs[i] == 1:
+            #         self.subgoal_timesteps[i].append(t)
+
+            # if g_index_new != self.g_index:
+            #     self.subgoal_timesteps.append(t)
+            #     self.g_index = g_index_new
 
             if any(done):
                 # here we assume all environments are done is ~same number of steps, so we terminate rollouts whenever any of the envs returns done
@@ -106,21 +146,30 @@ class RolloutWorker:
                 self.reset_all_rollouts()
                 return self.generate_rollouts()
 
+            consistent_sgss.append(consistent_sgs.copy())
             dones.append(done)
             obs.append(o.copy())
             achieved_goals.append(ag.copy())
             successes.append(success.copy())
             acts.append(u.copy())
             goals.append(self.g.copy())
+            # goals.append(self.gs[self.g_index].copy())
             o[...] = o_new
             ag[...] = ag_new
+
+            #in case subgoal was achieved
+            # self.g = obs_dict_new['desired_goal'].copy()
+
+            # if reward != -1 and self.g_index < len(self.goals):
+                # self.g_index += 1
+
         obs.append(o.copy())
         achieved_goals.append(ag.copy())
-
         episode = dict(o=obs,
                        u=acts,
                        g=goals,
-                       ag=achieved_goals)
+                       ag=achieved_goals,
+                       sgt=consistent_sgss)
         for key, value in zip(self.info_keys, info_values):
             episode['info_{}'.format(key)] = value
 
@@ -152,6 +201,12 @@ class RolloutWorker:
         """
         with open(path, 'wb') as f:
             pickle.dump(self.policy, f)
+
+    def save_policies(self,path):
+        suffixes = ['1','2','3']
+        for i in range(len(self.policies)):
+            with open(path+suffixes[i],'wb') as f:
+                pickle.dump(self.policies[i],f)
 
     def logs(self, prefix='worker'):
         """Generates a dictionary that contains all collected statistics.

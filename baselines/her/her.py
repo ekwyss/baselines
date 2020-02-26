@@ -11,6 +11,9 @@ from baselines.common.mpi_moments import mpi_moments
 import baselines.her.experiment.config as config
 from baselines.her.rollout import RolloutWorker
 
+from baselines.her.policies import Policies
+import pickle
+
 def mpi_average(value):
     if not isinstance(value, list):
         value = [value]
@@ -18,8 +21,44 @@ def mpi_average(value):
         value = [0.]
     return mpi_moments(np.array(value))[0]
 
+# def split_episode(episode):
+#     #currently one episode case
+#     new_episodes = []
+#     goal_indices = np.where(episode['info_is_success'][0] == 1)[0] + 1
+#     # print(goal_indices)
+#     #Change nothing, just put all into first (two) policy(s)
+#     if len(goal_indices) == 0:
+#         return [episode]
+#     #trailing successes irrelevant, will just pass everything to end
+#     if len(goal_indices) > 2:
+#         goal_indices = goal_indices[:2]
+#     #whether 1,2,... always want last episode to reach to end
+#     # goal_indices.append(-1)
+#     goal_indices = np.concatenate(([0], goal_indices, [-1]))
+#     # print(goal_indices)
+#     for i in range(len(goal_indices)-1):
+#         # new_dict = dict.fromkeys(episode.keys())
+#         new_dict = {}
+#         for key in episode.keys():
+#             # temp = []
+#             fst_ind = goal_indices[i]
+#             snd_ind = goal_indices[i+1]
+#             if (key == 'o' or key == 'ag') and snd_ind != -1:
+#                 snd_ind += 1 
+#             #for multi episode case - doesn't work
+#             # for ep in episode[key]:
+#                 ## new_dict[key][0] = episode[key][0]
+#                 # temp.append(ep[fst_ind:snd_ind])
+#             # new_dict[key] = temp
 
-def train(*, policy, rollout_worker, evaluator,
+#             new_dict[key] = np.array([episode[key][0][fst_ind:snd_ind]])
+#         new_episodes.append(new_dict)
+#     # print('hilo')
+#     # print(new_episodes[0]['g'].shape)
+#     # print(episode['g'].shape)
+#     return new_episodes
+
+def train(*, policies, rollout_worker, evaluator,
           n_epochs, n_test_rollouts, n_cycles, n_batches, policy_save_interval,
           save_path, demo_file, **kwargs):
     rank = MPI.COMM_WORLD.Get_rank()
@@ -32,7 +71,8 @@ def train(*, policy, rollout_worker, evaluator,
     logger.info("Training...")
     best_success_rate = -1
 
-    if policy.bc_loss == 1: policy.init_demo_buffer(demo_file) #initialize demo buffer if training with demonstrations
+    # if policy.bc_loss == 1: policy.init_demo_buffer(demo_file) #initialize demo buffer if training with demonstrations
+    if policies.policies[0].bc_loss == 1: policies.init_demo_buffer(demo_file) #initialize demo buffer if training with demonstrations
 
     # num_timesteps = n_epochs * n_cycles * rollout_length * number of rollout workers
     for epoch in range(n_epochs):
@@ -40,10 +80,23 @@ def train(*, policy, rollout_worker, evaluator,
         rollout_worker.clear_history()
         for _ in range(n_cycles):
             episode = rollout_worker.generate_rollouts()
-            policy.store_episode(episode)
+            # new_episodes = split_episode(episode)
+
+            #ATTEMPTING TO ONLY UPDATE POLICIES USED IN EPISODE
+            #don't think you can do this because there may be multiple episodes in the buffer
+            # goal_indices = np.where(episode['info_is_success'][0] == 1)[0]
+            #temp fix
+            # new_episodes = [episode.copy(),episode.copy(),episode.copy()]
+
+            # split up episodes into subsegments
+            # policies.store_episodes(new_episodes)
+            policies.store_episodes(episode)
+            # policy.store_episode(episode)
             for _ in range(n_batches):
-                policy.train()
-            policy.update_target_net()
+                policies.train()
+                # policy.train()
+            policies.update_target_nets()
+            # policy.update_target_net()
 
         # test
         evaluator.clear_history()
@@ -56,8 +109,9 @@ def train(*, policy, rollout_worker, evaluator,
             logger.record_tabular(key, mpi_average(val))
         for key, val in rollout_worker.logs('train'):
             logger.record_tabular(key, mpi_average(val))
-        for key, val in policy.logs():
-            logger.record_tabular(key, mpi_average(val))
+        policies.record_logs(logger)
+        # for key, val in policy.logs():
+            # logger.record_tabular(key, mpi_average(val))
 
         if rank == 0:
             logger.dump_tabular()
@@ -67,12 +121,15 @@ def train(*, policy, rollout_worker, evaluator,
         if rank == 0 and success_rate >= best_success_rate and save_path:
             best_success_rate = success_rate
             logger.info('New best success rate: {}. Saving policy to {} ...'.format(best_success_rate, best_policy_path))
-            evaluator.save_policy(best_policy_path)
-            evaluator.save_policy(latest_policy_path)
+            evaluator.save_policies(best_policy_path)
+            # evaluator.save_policy(best_policy_path)
+            evaluator.save_policies(latest_policy_path)
+            # evaluator.save_policy(latest_policy_path)
         if rank == 0 and policy_save_interval > 0 and epoch % policy_save_interval == 0 and save_path:
             policy_path = periodic_policy_path.format(epoch)
             logger.info('Saving periodic policy to {} ...'.format(policy_path))
-            evaluator.save_policy(policy_path)
+            evaluator.save_policies(policy_path)
+            # evaluator.save_policy(policy_path)
 
         # make sure that different threads have different seeds
         local_uniform = np.random.uniform(size=(1,))
@@ -81,7 +138,7 @@ def train(*, policy, rollout_worker, evaluator,
         if rank != 0:
             assert local_uniform[0] != root_uniform[0]
 
-    return policy
+    return policies
 
 
 def learn(*, network, env, total_timesteps,
@@ -137,8 +194,16 @@ def learn(*, network, env, total_timesteps,
         logger.warn('****************')
         logger.warn()
 
+    #if we had subgoals with different dims we would have to change that here/in configure_dims
+    # then when initializing each ddpg agent we pass in the appropriate dims
+    # print(params.keys())
     dims = config.configure_dims(params)
-    policy = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return)
+    # policy = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return)
+    policies = Policies(1,dims,params,clip_return)
+    # policies = Policies(2,dims,params,clip_return,3,[0,2])
+    # policies = Policies(3,dims,params,clip_return)
+    #same obs and action space, hack
+    # policies = [config.configure_ddpg(dims=dims, params=params, clip_return=clip_return),config.configure_ddpg(dims=dims, params=params, clip_return=clip_return)]
     if load_path is not None:
         tf_util.load_variables(load_path)
 
@@ -164,14 +229,16 @@ def learn(*, network, env, total_timesteps,
 
     eval_env = eval_env or env
 
-    rollout_worker = RolloutWorker(env, policy, dims, logger, monitor=True, **rollout_params)
-    evaluator = RolloutWorker(eval_env, policy, dims, logger, **eval_params)
+    rollout_worker = RolloutWorker(env, policies, dims, logger, monitor=True, **rollout_params)
+    # rollout_worker = RolloutWorker(env, policy, dims, logger, monitor=True, **rollout_params)
+    evaluator = RolloutWorker(eval_env, policies, dims, logger, **eval_params)
+    # evaluator = RolloutWorker(eval_env, policy, dims, logger, **eval_params)
 
     n_cycles = params['n_cycles']
     n_epochs = total_timesteps // n_cycles // rollout_worker.T // rollout_worker.rollout_batch_size
 
     return train(
-        save_path=save_path, policy=policy, rollout_worker=rollout_worker,
+        save_path=save_path, policies=policies, rollout_worker=rollout_worker,
         evaluator=evaluator, n_epochs=n_epochs, n_test_rollouts=params['n_test_rollouts'],
         n_cycles=params['n_cycles'], n_batches=params['n_batches'],
         policy_save_interval=policy_save_interval, demo_file=demo_file)

@@ -7,6 +7,7 @@ import numpy as np
 actions = []
 observations = []
 infos = []
+NUMGOALS = 1
 
 def main():
     env = gym.make('FetchPickAndPlace-v1')
@@ -29,12 +30,14 @@ def main():
 
 def goToGoal(env, lastObs):
 
-    goal = lastObs['desired_goal']
+    goal = lastObs['desired_goals'][NUMGOALS-1]
+    # goal = lastObs['desired_goals'][2]
     objectPos = lastObs['observation'][3:6]
     object_rel_pos = lastObs['observation'][6:9]
     episodeAcs = []
     episodeObs = []
     episodeInfo = []
+    g_ind = 0
 
     object_oriented_goal = object_rel_pos.copy()
     object_oriented_goal[2] += 0.03 # first make the gripper go slightly above the object
@@ -53,7 +56,9 @@ def goToGoal(env, lastObs):
 
         action[len(action)-1] = 0.05 #open
 
-        obsDataNew, reward, done, info = env.step(action)
+        obsDataNew, reward, done, info = env.step(action,g_ind)
+        if reward != -1 and g_ind < NUMGOALS-1:
+            g_ind += 1
         timeStep += 1
 
         episodeAcs.append(action)
@@ -71,7 +76,9 @@ def goToGoal(env, lastObs):
 
         action[len(action)-1] = -0.005
 
-        obsDataNew, reward, done, info = env.step(action)
+        obsDataNew, reward, done, info = env.step(action,g_ind)
+        if reward != -1 and NUMGOALS-1:
+            g_ind += 1
         timeStep += 1
 
         episodeAcs.append(action)
@@ -90,7 +97,9 @@ def goToGoal(env, lastObs):
 
         action[len(action)-1] = -0.005
 
-        obsDataNew, reward, done, info = env.step(action)
+        obsDataNew, reward, done, info = env.step(action,g_ind)
+        if reward != -1 and NUMGOALS-1:
+            g_ind += 1       
         timeStep += 1
 
         episodeAcs.append(action)
@@ -105,7 +114,9 @@ def goToGoal(env, lastObs):
         action = [0, 0, 0, 0]
         action[len(action)-1] = -0.005 # keep the gripper closed
 
-        obsDataNew, reward, done, info = env.step(action)
+        obsDataNew, reward, done, info = env.step(action,g_ind)
+        if reward != -1 and NUMGOALS-1:
+            g_ind += 1        
         timeStep += 1
 
         episodeAcs.append(action)

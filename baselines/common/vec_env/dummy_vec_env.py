@@ -1,6 +1,7 @@
 import numpy as np
 from .vec_env import VecEnv
 from .util import copy_obs_dict, dict_to_obs, obs_space_info
+from gym import spaces
 
 class DummyVecEnv(VecEnv):
     """
@@ -17,6 +18,10 @@ class DummyVecEnv(VecEnv):
         """
         self.envs = [fn() for fn in env_fns]
         env = self.envs[0]
+        # TODO: to make this work for num_env > 1 have to change GoalEnv itself?
+        # print(env)
+        # env.observation_space['desired_goals'] = spaces.Tuple(spaces.Box(3), spaces.Box(3), spaces.Box(3))
+        # print(env.observation_space)
         VecEnv.__init__(self, len(env_fns), env.observation_space, env.action_space)
         obs_space = env.observation_space
         self.keys, shapes, dtypes = obs_space_info(obs_space)
@@ -48,7 +53,7 @@ class DummyVecEnv(VecEnv):
             # if isinstance(self.envs[e].action_space, spaces.Discrete):
             #    action = int(action)
 
-            obs, self.buf_rews[e], self.buf_dones[e], self.buf_infos[e] = self.envs[e].step(action)
+            obs, self.buf_rews[e], self.buf_dones[e], self.buf_infos[e] = self.envs[e].step(action, self.envs[e].goal_index)
             if self.buf_dones[e]:
                 obs = self.envs[e].reset()
             self._save_obs(e, obs)
