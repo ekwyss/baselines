@@ -71,7 +71,9 @@ class RolloutWorker:
         info_values = [np.empty((self.T - 1, self.rollout_batch_size, self.dims['info_' + key]), np.float32) for key in self.info_keys]
         Qs = []
         # print("new ep")
-        g_index = 0
+        # g_index = 0
+        g_indices = [0]*self.rollout_batch_size
+        # self.policies.g_index = 0
         for t in range(self.T):
             # policy_output = self.policy.get_actions(
             #     # o, ag, self.gs[self.g_index],
@@ -82,8 +84,33 @@ class RolloutWorker:
             #     random_eps=self.random_eps if not self.exploit else 0.,
             #     use_target_net=self.use_target_net)
 
+            # print(o)
+            # print(o.shape)
+            # print(ag.shape)
+            # print(self.gs)
+            # print(self.gs.shape)
+            # print(self.gs[0][g_index])
+            # print(self.g)
+            # print(self.gs[0][g_index].shape)
+
+            #num_env = 2: (same with num_cpu = n)
+            #2,25                       | 1,25
+            #2,3                        | 1,3
+            #2,3,3                      | 1,3,3
+            #[1.47,.62,.45]             | [1.46,.62,.45]
+            #3,                         | 3,
+            # [g[i][g_inds[i]] for i in range(len(g_inds))]
+            # sgs = np.array([a[b] for a,b in zip(self.gs,g_indices)])
+
+            self.g = np.array([a[b] for a,b in zip(self.gs,g_indices)]) 
+            # print(self.gs)
+            # print(g_indices)
+            # print(self.g)
             policy_output = self.policies.get_actions(
-                o, ag, self.gs, g_index,
+                # o, ag, self.gs, g_index,
+                # o, ag, self.gs[0][g_index], g_index,
+                # o, ag, sgs, g_indices,
+                o, ag, self.g, g_indices,
                 compute_Q=self.compute_Q,
                 noise_eps=self.noise_eps if not self.exploit else 0.,
                 random_eps=self.random_eps if not self.exploit else 0.,
@@ -103,7 +130,7 @@ class RolloutWorker:
             ag_new = np.empty((self.rollout_batch_size, self.dims['g']))
             success = np.zeros(self.rollout_batch_size)
             # compute new states and observations
-            obs_dict_new, reward, done, info = self.venv.step(u)
+            obs_dict_new, rewards, done, info = self.venv.step(u)
 
             #TODO: All definitely only works for one env, extend for any num
             # g_index_new = obs_dict_new['goal_index'] #make sure this doesn't change outside of this
@@ -117,10 +144,18 @@ class RolloutWorker:
             # self.g_index = g_index_new
 
             #update goal/goal_index if we achieve a subgoal
-            if reward != -1 and g_index < len(self.gs[0])-1:#[0])-1:
-                g_index += 1
-                #would have to be of len(numenvs)
-                self.g = [self.gs[0][g_index]]
+            for i in np.where(rewards != -1)[0]:
+                # print(i)
+                g_indices[i] = min(g_indices[i]+1,self.policies.num_goals-1)
+                # print("?")
+                # self.g = [self.gs[:,g_indices]]
+
+            # if reward != -1 and g_index < len(self.gs[0])-1:#[0])-1:
+            #     g_index += 1
+            #     #would have to be of len(numenvs)
+            #     self.g = [self.gs[0][g_index]]
+
+
 
             # #identify transition as candidate for subgoal experience replay
             # for i in range(len(consistent_sgs)):

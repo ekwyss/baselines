@@ -199,7 +199,7 @@ def learn(*, network, env, total_timesteps,
     # print(params.keys())
     dims = config.configure_dims(params)
     # policy = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return)
-    policies = Policies(1,dims,params,clip_return)
+    policies = Policies(1,dims,params,clip_return, num_goals=3)
     # policies = Policies(2,dims,params,clip_return,3,[0,2])
     # policies = Policies(3,dims,params,clip_return)
     #same obs and action space, hack

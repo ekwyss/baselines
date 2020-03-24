@@ -19,11 +19,11 @@ class TimeLimit(gym.Wrapper):
         return self.env.reset(**kwargs)
 
 class ClipActionsWrapper(gym.Wrapper):
-    def step(self, action, goal_index):
+    def step(self, action):#, goal_index):
         import numpy as np
         action = np.nan_to_num(action)
         action = np.clip(action, self.action_space.low, self.action_space.high)
-        return self.env.step(action, goal_index)
+        return self.env.step(action)#, goal_index)
 
     def reset(self, **kwargs):
         return self.env.reset(**kwargs)

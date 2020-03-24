@@ -231,9 +231,9 @@ def main(args):
         num_goals = model.num_goals
         while True:
             if state is not None:
-                actions, _, state, _ = model.step(obs,goal_ind,S=state, M=dones)
+                actions, _, state, _ = model.step(obs, goal_ind, S=state, M=dones)
             else:
-                actions, _, _, _ = model.step(obs,goal_ind)
+                actions, _, _, _ = model.step(obs, goal_ind)
 
             obs, rew, done, _ = env.step(actions)
             if rew != -1 and goal_ind < num_goals-1:
@@ -253,3 +253,4 @@ def main(args):
 
 if __name__ == '__main__':
     main(sys.argv)
+

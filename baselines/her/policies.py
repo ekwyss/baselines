@@ -12,12 +12,20 @@ def mpi_average(value):
 
 #New class for use in her.py to allow for multiple policies to appear and act as if one
 class Policies:
-	def __init__(self,num_policies,dims,params,clip_return, num_goals=None, fst_sg_per_policy=None):
+	def __init__(self,num_policies,dims,params,clip_return, num_goals=None, pi_from_gi=None):
 		#if explicitly stated, allow for policies to be shared among multiple consecutive subgoals, else one policy per subgoal
-		self.fst_sg_per_policy = np.arange(num_policies) if fst_sg_per_policy is None else fst_sg_per_policy
+		# self.fst_sg_per_policy = np.arange(num_policies) if fst_sg_per_policy is None else fst_sg_per_policy
 		self.num_goals = num_policies if num_goals is None else num_goals
 		self.subgoals_achieved = 0
 		# self.fst_sg_per_policy = [0,2]
+		#mapping from g_inds to policy_inds:
+		# self.pi_from_gi = np.arange(num_goals) if pi_from_gi is None else pi_from_gi
+		self.pi_from_gi = np.zeros(num_goals) if pi_from_gi is None else pi_from_gi
+		# policy_ind = -1
+		# for sg_ind in self.fst_sg_per_policy:
+		# 	if g_ind >= sg_ind:
+		# 		policy_ind += 1
+
 		self.policies = []
 		for i in range(num_policies):
 			#for now share params for all policies
@@ -49,8 +57,6 @@ class Policies:
 		else:
 			for i in range(self.num_policies):
 
-				#TODO: TERRIBLE, QUICK HACK TO ALLOW NO UPDATES TO BE MADE TOWARDS NONRELEVANT POLICIES - CHANGE
-				#fix, do here and pass in ep_Ts to store_episode for each policy (in her.ddpg.py) and then in there pass into sample_transitions so don't have to recompute ep_Ts
 				ep_Ts = []
 				for j in range(rollout_batch_size):
 					goal_indices = np.where(episode_batch['info_is_success'][j] == 1)[0]
@@ -104,7 +110,8 @@ class Policies:
 
 	def train(self):
 		for i in range(self.num_policies):
-			if self.subgoals_achieved >= self.fst_sg_per_policy[i]:
+			# if self.subgoals_achieved >= self.fst_sg_per_policy[i]:
+			if self.subgoals_achieved >= self.pi_from_gi[i]:
 				self.policies[i].train()
 		# for i in range(self.subgoals_achieved):
 		# 	self.policies[i].train()
@@ -113,7 +120,8 @@ class Policies:
 
 	def update_target_nets(self):
 		for i in range(self.num_policies):
-			if self.subgoals_achieved >= self.fst_sg_per_policy[i]:
+			# if self.subgoals_achieved >= self.fst_sg_per_policy[i]:
+			if self.subgoals_achieved >= self.pi_from_gi[i]:
 				self.policies[i].update_target_net()
 		# for i in range(self.subgoals_achieved):
 		# 	self.policies[i].update_target_net()
@@ -127,17 +135,37 @@ class Policies:
 				logger.record_tabular(key, mpi_average(val))
 
 	def step(self,obs,goal_index):
-		actions = self.get_actions(obs['observation'], obs['achieved_goal'], obs['desired_goals'],goal_index)
+		# actions = self.get_actions(obs['observation'], obs['achieved_goal'], obs['desired_goals'],goal_index)
+		actions = self.get_actions(obs['observation'], obs['achieved_goal'], obs['desired_goal'],goal_index)
 		return actions, None, None, None
 
-	def get_actions(self, o, ag, gs, g_ind, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):
-		policy_ind = -1
-		for sg_ind in self.fst_sg_per_policy:
-			if g_ind >= sg_ind:
-				policy_ind += 1
+	# def get_actions(self, o, ag, g, g_ind, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):
+	def get_actions(self, o, ag, gs, g_inds, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):
+		policy_inds = np.array([self.pi_from_gi[g_ind] for g_ind in g_inds])
+		# print(policy_inds)
+		acts = []
+		for i in range(self.num_policies):
+			# print(i)
+			inds = np.where(policy_inds == i)
+			p_acts = self.policies[i].get_actions(o[inds], ag[inds], gs[inds],compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net)
+			acts = p_acts if i == 0 else acts+p_acts
+			# print("output")
+			# print(self.policies[i].get_actions(o[inds], ag[inds], gs[inds],compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net))
+			# output += self.policies[i].get_actions(o[inds], ag[inds], gs[inds],compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net)
+
+
+		# policy_ind = -1
+		# for sg_ind in self.fst_sg_per_policy:
+		# 	if g_ind >= sg_ind:
+		# 		policy_ind += 1
 
 		# extra layer on gs?
-		return self.policies[policy_ind].get_actions(o,ag,gs[0][g_ind],compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net)
+		# (3,) during training
+		# (1,3,3) during exec (from step above, bc had desired_goals)
+		# print(g.shape)
+		# print(g)
+		return acts
+		# return self.policies[policy_ind].get_actions(o,ag,g,compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net)
 		# return self.policies[g_ind].get_actions(o,ag,gs[0][g_ind],compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net)
 
 	def save(self, save_path):

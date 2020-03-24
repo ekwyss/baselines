@@ -169,11 +169,11 @@ def make_sample_her_transitions(replay_strategy, replay_k, reward_fun, policy_in
 
     return _sample_her_transitions
 
-############# slightly modified? #################
+############# 2/27 w/o comments #################
 # import numpy as np
+# import pickle
 
-
-# def make_sample_her_transitions(replay_strategy, replay_k, reward_fun, policy_index = 0):
+# def make_sample_her_transitions(replay_strategy, replay_k, reward_fun, policy_index):
 #     """Creates a sample function that can be used for HER experience replay.
 
 #     Args:
@@ -188,33 +188,41 @@ def make_sample_her_transitions(replay_strategy, replay_k, reward_fun, policy_in
 #     else:  # 'replay_strategy' == 'none'
 #         future_p = 0
 
-#     def _sample_her_transitions(episode_batch, batch_size_in_transitions):
-#         """episode_batch is {key: array(buffer_size x T x dim_key)}
-#         """
+#     def _sample_her_transitions(episode_batch, batch_size_in_transitions, ep_Ts):
 #         T = episode_batch['u'].shape[1]
 #         rollout_batch_size = episode_batch['u'].shape[0]
 #         batch_size = batch_size_in_transitions
 
-#         #basically want to change T to limit how far ahead we can sample from
-#         goal_indices = np.where(episode_batch['info_is_success'][0] == 1)[0]
+#         num_candidate_transitions = sum(ep_Ts)
 
-#         # Select which episodes and time steps to use.
-#         episode_idxs = np.random.randint(0, rollout_batch_size, batch_size)
-#         t_samples = np.random.randint(T, size=batch_size)
+#         probas = [ep_T / num_candidate_transitions for ep_T in ep_Ts]
+#         episode_idxs = np.sort(np.random.choice(rollout_batch_size,batch_size,p=probas))
+#         t_per_ep = [np.sum(episode_idxs == i) for i in range(rollout_batch_size)]
+
+#         #  TAKE t_per_ep SAMPLE FROM EVERY EP AND LINE UP WITH episode_idxs THEN SHUFFLE TOGETHER FOR USE IN CREATING TRANSITIONS
+#         t_samples = []
+#         future_offsets = []
+#         for i in range(rollout_batch_size):
+#             #calculate relevant info for corresponding episode
+#             t_samps = np.random.randint(ep_Ts[i],size=t_per_ep[i])
+#             future_offset = np.random.uniform(size=t_per_ep[i]) * (ep_Ts[i] - t_samps)
+#             future_offset = future_offset.astype(int)
+
+#             #concat to output
+#             if i == 0:
+#                 t_samples = t_samps.copy()
+#                 future_offsets = future_offset.copy()
+#             else:
+#                 t_samples = np.concatenate((t_samples,t_samps))
+#                 future_offsets = np.concatenate((future_offsets,future_offset))
+
+#         her_indexes = np.where(np.random.uniform(size=batch_size) < future_p)
+#         future_t = (t_samples + 1 + future_offsets)[her_indexes]
+#         future_ag = episode_batch['ag'][episode_idxs[her_indexes], future_t]
+
 #         transitions = {key: episode_batch[key][episode_idxs, t_samples].copy()
 #                        for key in episode_batch.keys()}
 
-#         # Select future time indexes proportional with probability future_p. These
-#         # will be used for HER replay by substituting in future goals.
-#         her_indexes = np.where(np.random.uniform(size=batch_size) < future_p)
-#         future_offset = np.random.uniform(size=batch_size) * (T - t_samples)
-#         future_offset = future_offset.astype(int)
-#         future_t = (t_samples + 1 + future_offset)[her_indexes]
-
-#         # Replace goal with achieved goal but only for the previously-selected
-#         # HER transitions (as defined by her_indexes). For the other transitions,
-#         # keep the original goal.
-#         future_ag = episode_batch['ag'][episode_idxs[her_indexes], future_t]
 #         transitions['g'][her_indexes] = future_ag
 
 #         # Reconstruct info dictionary for reward  computation.
