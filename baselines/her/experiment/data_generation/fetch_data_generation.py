@@ -7,7 +7,6 @@ import numpy as np
 actions = []
 observations = []
 infos = []
-NUMGOALS = 3
 
 def main():
     env = gym.make('FetchPickAndPlace-v1')
@@ -24,20 +23,18 @@ def main():
     fileName = "data_fetch"
     fileName += "_" + initStateSpace
     fileName += "_" + str(numItr)
-    fileName += "goalind_5_5_20.npz"#".npz"
+    fileName += ".npz"
 
     np.savez_compressed(fileName, acs=actions, obs=observations, info=infos) # save the file
 
 def goToGoal(env, lastObs):
 
-    goal = lastObs['desired_goals'][NUMGOALS-1]
-    # goal = lastObs['desired_goals'][2]
+    goal = lastObs['desired_goal']
     objectPos = lastObs['observation'][3:6]
     object_rel_pos = lastObs['observation'][6:9]
     episodeAcs = []
     episodeObs = []
     episodeInfo = []
-    g_ind = 0
 
     object_oriented_goal = object_rel_pos.copy()
     object_oriented_goal[2] += 0.03 # first make the gripper go slightly above the object
@@ -56,11 +53,7 @@ def goToGoal(env, lastObs):
 
         action[len(action)-1] = 0.05 #open
 
-        obsDataNew, reward, done, info = env.step(action)#,g_ind)
-        # print(reward)
-        # if reward != -1 and g_ind < NUMGOALS-1:
-        #     print(reward,g_ind)
-        #     g_ind += 1
+        obsDataNew, reward, done, info = env.step(action,0)
         timeStep += 1
 
         episodeAcs.append(action)
@@ -78,11 +71,7 @@ def goToGoal(env, lastObs):
 
         action[len(action)-1] = -0.005
 
-        obsDataNew, reward, done, info = env.step(action)#,g_ind)
-        # print(reward)
-        # if reward != -1 and g_ind < NUMGOALS-1:
-        #     print(reward,g_ind)
-        #     g_ind += 1
+        obsDataNew, reward, done, info = env.step(action,0)
         timeStep += 1
 
         episodeAcs.append(action)
@@ -101,11 +90,7 @@ def goToGoal(env, lastObs):
 
         action[len(action)-1] = -0.005
 
-        obsDataNew, reward, done, info = env.step(action)#,g_ind)
-        # print(reward)
-        # if reward != -1 and g_ind < NUMGOALS-1:
-        #     print(reward,g_ind)
-        #     g_ind += 1       
+        obsDataNew, reward, done, info = env.step(action,0)
         timeStep += 1
 
         episodeAcs.append(action)
@@ -120,11 +105,7 @@ def goToGoal(env, lastObs):
         action = [0, 0, 0, 0]
         action[len(action)-1] = -0.005 # keep the gripper closed
 
-        obsDataNew, reward, done, info = env.step(action)#,g_ind)
-        # print(reward)
-        # if reward != -1 and g_ind < NUMGOALS-1:
-            # print(reward,g_ind)
-            # g_ind += 1        
+        obsDataNew, reward, done, info = env.step(action,0)
         timeStep += 1
 
         episodeAcs.append(action)

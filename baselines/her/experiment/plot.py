@@ -54,149 +54,67 @@ def pad(xs, value=np.nan):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('filedir1', type=str)
-# parser.add_argument('-filedirs1', nargs='+', type=str)
-parser.add_argument('filedir2', type=str)
-# parser.add_argument('-filedirs2', nargs='+', type=str)
-parser.add_argument('num_epochs', type=int)
-# parser.add_argument('-num_epochs', type=int)
+parser.add_argument('dir', type=str)
+parser.add_argument('--smooth', type=int, default=1)
 args = parser.parse_args()
-# filedir1 = "/home/eric/baselines/policies/her500000Output"
-# filedir2 = "/home/eric/baselines/policies/150000"
-# filedir2 = "/home/eric/baselines/policies/217newsingle2"
-# filedir2 = "/home/eric/openai-2020-02-11-22-37-24-858984"
-# filedir2 = "/home/eric/baselines/policies/100000"
 
-def make_data(filedir):
-    # Load all data.
-    data = {}
-    paths = [os.path.abspath(os.path.join(path, '..')) for path in glob2.glob(os.path.join(filedir, '**', 'progress.csv'))]
-    # paths = []
-    # for filedir in filedirs:
-    #     paths.append(os.path.abspath(os.path.join(path, '..')) for path in glob2.glob(os.path.join(filedir, '**', 'progress.csv')))
+# Load all data.
+data = {}
+paths = [os.path.abspath(os.path.join(path, '..')) for path in glob2.glob(os.path.join(args.dir, '**', 'progress.csv'))]
+for curr_path in paths:
+    if not os.path.isdir(curr_path):
+        continue
+    results = load_results(os.path.join(curr_path, 'progress.csv'))
+    if not results:
+        print('skipping {}'.format(curr_path))
+        continue
+    print('loading {} ({})'.format(curr_path, len(results['epoch'])))
+    with open(os.path.join(curr_path, 'params.json'), 'r') as f:
+        params = json.load(f)
 
-    for curr_path in paths:
-        if not os.path.isdir(curr_path):
-            continue
-        results = load_results(os.path.join(curr_path, 'progress.csv'))
-        if not results:
-            print('skipping {}'.format(curr_path))
-            continue
-        print('loading {} ({})'.format(curr_path, len(results['epoch'])))
-        with open(os.path.join(curr_path, 'params.json'), 'r') as f:
-            params = json.load(f)
+    success_rate = np.array(results['test/success_rate'])
+    epoch = np.array(results['epoch']) + 1
+    env_id = params['env_name']
+    replay_strategy = params['replay_strategy']
 
-        success_rate = np.array(results['test/success_rate'])
-        epoch = np.array(results['epoch']) + 1
-        env_id = params['env_name']
-        replay_strategy = params['replay_strategy']
+    if replay_strategy == 'future':
+        config = 'her'
+    else:
+        config = 'ddpg'
+    if 'Dense' in env_id:
+        config += '-dense'
+    else:
+        config += '-sparse'
+    env_id = env_id.replace('Dense', '')
 
-        if replay_strategy == 'future':
-            config = 'her'
-        else:
-            config = 'ddpg'
-        if 'Dense' in env_id:
-            config += '-dense'
-        else:
-            config += '-sparse'
-        env_id = env_id.replace('Dense', '')
+    # Process and smooth data.
+    assert success_rate.shape == epoch.shape
+    x = epoch
+    y = success_rate
+    if args.smooth:
+        x, y = smooth_reward_curve(epoch, success_rate)
+    assert x.shape == y.shape
 
-        # Process and smooth data.
-        assert success_rate.shape == epoch.shape
-        x = epoch
-        y = success_rate
-        # if args.smooth:
-        if 1:
-            x, y = smooth_reward_curve(epoch, success_rate)
-        assert x.shape == y.shape
+    if env_id not in data:
+        data[env_id] = {}
+    if config not in data[env_id]:
+        data[env_id][config] = []
+    data[env_id][config].append((x, y))
 
-        if env_id not in data:
-            data[env_id] = {}
-        if config not in data[env_id]:
-            data[env_id][config] = []
-        data[env_id][config].append((x, y))
-    return data
-
-
-#get results from all "results<i>" folders within specified folder
-success_rates1 = []
-for filedir in os.listdir(args.filedir1):
-    if filedir[:7] == 'results':
-        full_path = os.path.join(args.filedir1, filedir)
-        data1 = make_data(full_path)
-        if len(data1['FetchPickAndPlace-v1']['her-sparse'][0][0]) >= 100:
-            success_rates1.append(data1['FetchPickAndPlace-v1']['her-sparse'][0][1])
-
-success_rates2 = []
-for filedir in os.listdir(args.filedir2):
-    if filedir[:7] == 'results':
-        full_path = os.path.join(args.filedir2, filedir)
-        data2 = make_data(full_path)
-        if len(data2['FetchPickAndPlace-v1']['her-sparse'][0][0]) >= 100:
-            success_rates2.append(data2['FetchPickAndPlace-v1']['her-sparse'][0][1])
-
-
-#If passed in all relevant folders on command line
-# success_rates1 = []
-# for filedir in args.filedirs1:
-#     data1 = make_data(filedir)
-#     if len(data1['FetchPickAndPlace-v1']['her-sparse'][0][0]) == 100:
-#         success_rates1.append(data1['FetchPickAndPlace-v1']['her-sparse'][0][1])
-
-# success_rates2 = []
-# for filedir in args.filedirs2:
-#     data2 = make_data(filedir)
-#     if len(data2['FetchPickAndPlace-v1']['her-sparse'][0][0]) == 100:
-#         success_rates2.append(data2['FetchPickAndPlace-v1']['her-sparse'][0][1])
-data1['FetchPickAndPlace-v1']['her-sparse'][0] = (data1['FetchPickAndPlace-v1']['her-sparse'][0][0], np.mean(success_rates1, axis=0))
-data2['FetchPickAndPlace-v1']['her-sparse'][0] = (data2['FetchPickAndPlace-v1']['her-sparse'][0][0],np.mean(success_rates2, axis=0))
-# print(data1)
-# print(np.mean(data1, axis=0))
-# print(10/0)
-# data1 = make_data(args.filedir1)
-# data2 = make_data(args.filedir2)
-
-# print(data2)
-# print(type(data2))
-# print(data2.keys())
-# print(data2['FetchPickAndPlace-v1'])
-# print(type(data2['FetchPickAndPlace-v1']))
-# print(data2['FetchPickAndPlace-v1'].keys())
-# print(data2['FetchPickAndPlace-v1']['her-sparse'])
-# print(type(data2['FetchPickAndPlace-v1']['her-sparse']))
-# print(data2['FetchPickAndPlace-v1']['her-sparse'][0])
-# print(type(data2['FetchPickAndPlace-v1']['her-sparse'][0]))
-
-
-# datas = [np.mean(data1, axis=0), np.mean(data2, axis=0)]
-datas = [data1, data2]
-labels = ["Original HER", "Subgoal Based HER"]
 # Plot data.
-for env_id in sorted(data1.keys()):
+for env_id in sorted(data.keys()):
     print('exporting {}'.format(env_id))
     plt.clf()
 
-    for data,label in zip(datas,labels):
-        for config in sorted(data[env_id].keys()):
-            xs, ys = zip(*data[env_id][config])
-            xs, ys = pad(xs), pad(ys)
-            print(xs.shape)
-            print(ys.shape)
-            assert xs.shape == ys.shape
-            xnew = []
-            ynew = []
-            for i in range(len(xs)):
-                xnew.append(xs[i][:args.num_epochs])
-                ynew.append(ys[i][:args.num_epochs])
-            xs = np.array(xnew)
-            ys = np.array(ynew)
+    for config in sorted(data[env_id].keys()):
+        xs, ys = zip(*data[env_id][config])
+        xs, ys = pad(xs), pad(ys)
+        assert xs.shape == ys.shape
 
-            plt.plot(xs[0], np.nanmedian(ys, axis=0), label=label)
-            plt.fill_between(xs[0], np.nanpercentile(ys, 25, axis=0), np.nanpercentile(ys, 75, axis=0), alpha=0.25)
+        plt.plot(xs[0], np.nanmedian(ys, axis=0), label=config)
+        plt.fill_between(xs[0], np.nanpercentile(ys, 25, axis=0), np.nanpercentile(ys, 75, axis=0), alpha=0.25)
     plt.title(env_id)
     plt.xlabel('Epoch')
     plt.ylabel('Median Success Rate')
     plt.legend()
-    # plt.savefig(os.path.join('/home/eric/baselines/policies', 'fig_{}.png'.format(env_id)))
-    plt.savefig(os.path.join(args.filedir2, 'fig_{}.png'.format(env_id)))
-    # plt.savefig(os.path.join(args.dir, 'fig_{}.png'.format(env_id)))
+    plt.savefig(os.path.join(args.dir, 'fig_{}.png'.format(env_id)))

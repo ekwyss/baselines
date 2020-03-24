@@ -327,12 +327,8 @@ class Logger(object):
             if self.comm.rank != 0:
                 d['dummy'] = 1 # so we don't get a warning about empty dict
         out = d.copy() # Return the dict for unit testing purposes
-        # print("zero")
-        print(self.output_formats[2].file)
         for fmt in self.output_formats:
-            # print("first")
             if isinstance(fmt, KVWriter):
-                # print("second")
                 fmt.writekvs(d)
         self.name2val.clear()
         self.name2cnt.clear()

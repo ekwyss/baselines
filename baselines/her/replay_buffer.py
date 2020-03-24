@@ -47,7 +47,7 @@ class ReplayBuffer:
         buffers['o_2'] = buffers['o'][:, 1:, :]
         buffers['ag_2'] = buffers['ag'][:, 1:, :]
 
-        transitions = self.sample_transitions(buffers, batch_size, [buffers['u'].shape[1]]*buffers['u'].shape[0])
+        transitions = self.sample_transitions(buffers, batch_size)
 
         for key in (['r', 'o_2', 'ag_2'] + list(self.buffers.keys())):
             assert key in transitions, "key %s missing from transitions" % key
@@ -58,7 +58,6 @@ class ReplayBuffer:
         """episode_batch: array(batch_size x (T or T+1) x dim_key)
         """
         batch_sizes = [len(episode_batch[key]) for key in episode_batch.keys()]
-        # print(batch_sizes)
         assert np.all(np.array(batch_sizes) == batch_sizes[0])
         batch_size = batch_sizes[0]
 
