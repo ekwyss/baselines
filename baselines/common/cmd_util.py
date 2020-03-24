@@ -27,7 +27,8 @@ def make_vec_env(env_id, env_type, num_env, seed,
                  flatten_dict_observations=True,
                  gamestate=None,
                  initializer=None,
-                 force_dummy=False):
+                 force_dummy=False,
+                 use_g_ind=False):
     """
     Create a wrapped, monitored SubprocVecEnv for Atari and MuJoCo.
     """
@@ -49,7 +50,8 @@ def make_vec_env(env_id, env_type, num_env, seed,
             wrapper_kwargs=wrapper_kwargs,
             env_kwargs=env_kwargs,
             logger_dir=logger_dir,
-            initializer=initializer
+            initializer=initializer,
+            use_g_ind=use_g_ind
         )
 
     set_global_seeds(seed)
