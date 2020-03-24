@@ -76,7 +76,8 @@ def prepare_params(kwargs):
     env_name = kwargs['env_name']
 
     def make_env(subrank=None):
-        env = gym.make(env_name)
+        env_kwargs = {'use_g_ind' : True}#{'num_goals' : 3, 'subgoal_rewards' : [0,0,0], 'use_g_ind' : True}
+        env = gym.make(env_name, **env_kwargs)
         if subrank is not None and logger.get_dir() is not None:
             try:
                 from mpi4py import MPI
@@ -193,7 +194,6 @@ def configure_dims(params):
     env.reset()
     # obs, _, _, info = env.step(env.action_space.sample())
     obs, _, _, info = env.step(env.action_space.sample())#,0
-
     dims = {
         'o': obs['observation'].shape[0],
         'u': env.action_space.shape[0],
