@@ -46,11 +46,7 @@ class RolloutWorker:
         self.initial_o = self.obs_dict['observation']
         self.initial_ag = self.obs_dict['achieved_goal']
         self.g = self.obs_dict['desired_goal']
-        #remove extra layer of array
-        self.gs = self.obs_dict['desired_goals']#[0]
-        # self.g_index = 0
-        # self.subgoal_timesteps = [[0],[0],[0]]
-        # self.g = self.gs[self.g_index].copy()
+        self.gs = self.obs_dict['desired_goals']
 
     def generate_rollouts(self):
         """Performs `rollout_batch_size` rollouts in parallel for time horizon `T` with the current
@@ -70,46 +66,10 @@ class RolloutWorker:
         dones = []
         info_values = [np.empty((self.T - 1, self.rollout_batch_size, self.dims['info_' + key]), np.float32) for key in self.info_keys]
         Qs = []
-        # print("new ep")
-        # g_index = 0
         g_indices = [0]*self.rollout_batch_size
-        # self.policies.g_index = 0
         for t in range(self.T):
-            # policy_output = self.policy.get_actions(
-            #     # o, ag, self.gs[self.g_index],
-            #     # o, ag, self.g,
-            #     o, ag, self.gs[2],
-            #     compute_Q=self.compute_Q,
-            #     noise_eps=self.noise_eps if not self.exploit else 0.,
-            #     random_eps=self.random_eps if not self.exploit else 0.,
-            #     use_target_net=self.use_target_net)
-
-            # print(o)
-            # print(o.shape)
-            # print(ag.shape)
-            # print(self.gs)
-            # print(self.gs.shape)
-            # print(self.gs[0][g_index])
-            # print(self.g)
-            # print(self.gs[0][g_index].shape)
-
-            #num_env = 2: (same with num_cpu = n)
-            #2,25                       | 1,25
-            #2,3                        | 1,3
-            #2,3,3                      | 1,3,3
-            #[1.47,.62,.45]             | [1.46,.62,.45]
-            #3,                         | 3,
-            # [g[i][g_inds[i]] for i in range(len(g_inds))]
-            # sgs = np.array([a[b] for a,b in zip(self.gs,g_indices)])
-
             self.g = np.array([a[b] for a,b in zip(self.gs,g_indices)]) 
-            # print(self.gs)
-            # print(g_indices)
-            # print(self.g)
             policy_output = self.policies.get_actions(
-                # o, ag, self.gs, g_index,
-                # o, ag, self.gs[0][g_index], g_index,
-                # o, ag, sgs, g_indices,
                 o, ag, self.g, g_indices,
                 compute_Q=self.compute_Q,
                 noise_eps=self.noise_eps if not self.exploit else 0.,
@@ -132,31 +92,18 @@ class RolloutWorker:
             # compute new states and observations
             obs_dict_new, rewards, done, info = self.venv.step(u)
 
-            #TODO: All definitely only works for one env, extend for any num
-            # g_index_new = obs_dict_new['goal_index'] #make sure this doesn't change outside of this
-            # consistent_sgs = info[0]['consistent_subgoals'] 
+            #TODO: All definitely only works for one env, extend for any num - old comment
             consistent_sgs = np.array([i.get('consistent_subgoals', 0.0) for i in info])
 
             o_new = obs_dict_new['observation']
             ag_new = obs_dict_new['achieved_goal']
             success = np.array([i.get('is_success', 0.0) for i in info])
 
-            # self.g_index = g_index_new
-
             #update goal/goal_index if we achieve a subgoal
             for i in np.where(rewards != -1)[0]:
-                # print(i)
                 g_indices[i] = min(g_indices[i]+1,self.policies.num_goals-1)
-                # print("?")
-                # self.g = [self.gs[:,g_indices]]
 
-            # if reward != -1 and g_index < len(self.gs[0])-1:#[0])-1:
-            #     g_index += 1
-            #     #would have to be of len(numenvs)
-            #     self.g = [self.gs[0][g_index]]
-
-
-
+            ####old
             # #identify transition as candidate for subgoal experience replay
             # for i in range(len(consistent_sgs)):
             #     if consistent_sgs[i] == 1:
@@ -191,12 +138,6 @@ class RolloutWorker:
             # goals.append(self.gs[self.g_index].copy())
             o[...] = o_new
             ag[...] = ag_new
-
-            #in case subgoal was achieved
-            # self.g = obs_dict_new['desired_goal'].copy()
-
-            # if reward != -1 and self.g_index < len(self.goals):
-                # self.g_index += 1
 
         obs.append(o.copy())
         achieved_goals.append(ag.copy())
