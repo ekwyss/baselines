@@ -100,6 +100,7 @@ class RolloutWorker:
             success = np.array([i.get('is_success', 0.0) for i in info])
 
             #update goal/goal_index if we achieve a subgoal
+            # g_indices = [inf['goal_index'] for inf in info]
             for i in np.where(rewards != -1)[0]:
                 g_indices[i] = min(g_indices[i]+1,self.policies.num_goals-1)
 
@@ -146,6 +147,7 @@ class RolloutWorker:
                        g=goals,
                        ag=achieved_goals,
                        sgt=consistent_sgss)
+                       # gs=self.goals.copy())
         for key, value in zip(self.info_keys, info_values):
             episode['info_{}'.format(key)] = value
 

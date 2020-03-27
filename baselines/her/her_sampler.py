@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 
-def make_sample_her_transitions(replay_strategy, replay_k, reward_fun, policy_index):
+def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):#, policy_index):
     """Creates a sample function that can be used for HER experience replay.
 
     Args:
@@ -82,6 +82,7 @@ def make_sample_her_transitions(replay_strategy, replay_k, reward_fun, policy_in
 
         transitions = {key: episode_batch[key][episode_idxs, t_samples].copy()
                        for key in episode_batch.keys()}
+        #ag_2 used so we can compare achieved goal AFTER that timestep to the actual goal at that step?
 
         transitions['g'][her_indexes] = future_ag
 

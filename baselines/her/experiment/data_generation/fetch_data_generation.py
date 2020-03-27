@@ -10,7 +10,7 @@ infos = []
 NUMGOALS = 3
 
 def main():
-    env = gym.make('FetchPickAndPlace-v1')
+    env = gym.make('FetchPickAndPlace-v1', **{'num_goals' : 3, 'subgoal_rewards' : [5,5,20], 'use_g_ind' : True})
     numItr = 100
     initStateSpace = "random"
     env.reset()
@@ -29,7 +29,6 @@ def main():
     np.savez_compressed(fileName, acs=actions, obs=observations, info=infos) # save the file
 
 def goToGoal(env, lastObs):
-
     goal = lastObs['desired_goals'][NUMGOALS-1]
     # goal = lastObs['desired_goals'][2]
     objectPos = lastObs['observation'][3:6]
@@ -57,6 +56,7 @@ def goToGoal(env, lastObs):
         action[len(action)-1] = 0.05 #open
 
         obsDataNew, reward, done, info = env.step(action)#,g_ind)
+        g_ind = info['goal_index']
         # print(reward)
         # if reward != -1 and g_ind < NUMGOALS-1:
         #     print(reward,g_ind)
@@ -79,6 +79,7 @@ def goToGoal(env, lastObs):
         action[len(action)-1] = -0.005
 
         obsDataNew, reward, done, info = env.step(action)#,g_ind)
+        g_ind = info['goal_index']
         # print(reward)
         # if reward != -1 and g_ind < NUMGOALS-1:
         #     print(reward,g_ind)
@@ -102,6 +103,7 @@ def goToGoal(env, lastObs):
         action[len(action)-1] = -0.005
 
         obsDataNew, reward, done, info = env.step(action)#,g_ind)
+        g_ind = info['goal_index']
         # print(reward)
         # if reward != -1 and g_ind < NUMGOALS-1:
         #     print(reward,g_ind)
@@ -121,6 +123,7 @@ def goToGoal(env, lastObs):
         action[len(action)-1] = -0.005 # keep the gripper closed
 
         obsDataNew, reward, done, info = env.step(action)#,g_ind)
+        g_ind = info['goal_index']
         # print(reward)
         # if reward != -1 and g_ind < NUMGOALS-1:
             # print(reward,g_ind)
