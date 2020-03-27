@@ -86,14 +86,17 @@ class Policies:
 			for key,val in self.policies[i].logs(prefixes[i]):
 				logger.record_tabular(key, mpi_average(val))
 
-	def step(self,obs,goal_index):
-		actions = self.get_actions(obs['observation'], obs['achieved_goal'], obs['desired_goal'],goal_index)
+	def step(self,obs,goal_indices):
+		actions = self.get_actions(obs['observation'], obs['achieved_goal'], obs['desired_goal'],goal_indices)
 		return actions, None, None, None
 
 	# def get_actions(self, o, ag, g, g_ind, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):
 	def get_actions(self, o, ag, gs, g_inds, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):
 		#multi env case
-		policy_inds = np.array([self.pi_from_gi[g_ind] for g_ind in g_inds])
+		if type(g_inds) is int:
+			policy_inds = np.array([self.pi_from_gi[g_inds]])
+		else:
+			policy_inds = np.array([self.pi_from_gi[g_ind] for g_ind in g_inds])
 		acts = []
 		for i in range(self.num_policies):
 			inds = np.where(policy_inds == i)

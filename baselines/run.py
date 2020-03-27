@@ -227,7 +227,7 @@ def main(args):
         dones = np.zeros((1,))
 
         episode_rew = np.zeros(env.num_envs) if isinstance(env, VecEnv) else np.zeros(1)
-        goal_ind = 0
+        goal_ind = [0]
         num_goals = model.num_goals
         while True:
             if state is not None:
@@ -236,7 +236,7 @@ def main(args):
                 actions, _, _, _ = model.step(obs, goal_ind)
 
             obs, rew, done, info = env.step(actions)
-            goal_ind = info['goal_index']
+            goal_ind = info[0]['goal_index']
             # if rew != -1 and goal_ind < num_goals-1:
                 # goal_ind += 1
             episode_rew += rew
@@ -246,7 +246,7 @@ def main(args):
                 for i in np.nonzero(done)[0]:
                     print('episode_rew={}'.format(episode_rew[i]))
                     episode_rew[i] = 0
-                    goal_ind = 0
+                    goal_ind = [0]
 
     env.close()
 

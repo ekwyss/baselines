@@ -54,11 +54,11 @@ def pad(xs, value=np.nan):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('filedir1', type=str)
-# parser.add_argument('-filedirs1', nargs='+', type=str)
-parser.add_argument('filedir2', type=str)
+# parser.add_argument('filedir1', type=str)
+parser.add_argument('-filedirs1', nargs='+', type=str)
+# parser.add_argument('filedir2', type=str)
 # parser.add_argument('-filedirs2', nargs='+', type=str)
-parser.add_argument('num_epochs', type=int)
+parser.add_argument('-num_epochs', type=int)
 # parser.add_argument('-num_epochs', type=int)
 args = parser.parse_args()
 # filedir1 = "/home/eric/baselines/policies/her500000Output"
@@ -117,24 +117,44 @@ def make_data(filedir):
         data[env_id][config].append((x, y))
     return data
 
+# #get results from all "results<i>" folders within specified folder
+# success_rates1 = []
+# for filedir in os.listdir(args.filedir1):
+#     if filedir[:7] == 'results':
+#         full_path = os.path.join(args.filedir1, filedir)
+#         data1 = make_data(full_path)
+#         if len(data1['FetchPickAndPlace-v1']['her-sparse'][0][0]) >= 40:
+#             success_rates1.append(data1['FetchPickAndPlace-v1']['her-sparse'][0][1])
+# data1['FetchPickAndPlace-v1']['her-sparse'][0] = (data1['FetchPickAndPlace-v1']['her-sparse'][0][0], np.mean(success_rates1, axis=0))
+# datas = [data1]
+# labels = [args.filedir1.split("/")[-3] + "/" + args.filedir1.split("/")[-2]]
 
-#get results from all "results<i>" folders within specified folder
-success_rates1 = []
-for filedir in os.listdir(args.filedir1):
-    if filedir[:7] == 'results':
-        full_path = os.path.join(args.filedir1, filedir)
-        data1 = make_data(full_path)
-        if len(data1['FetchPickAndPlace-v1']['her-sparse'][0][0]) >= 100:
+# if args.filedir2 != "NA":
+#     success_rates2 = []
+#     for filedir in os.listdir(args.filedir2):
+#         if filedir[:7] == 'results':
+#             full_path = os.path.join(args.filedir2, filedir)
+#             data2 = make_data(full_path)
+#             if len(data2['FetchPickAndPlace-v1']['her-sparse'][0][0]) >= 40:
+#                 success_rates2.append(data2['FetchPickAndPlace-v1']['her-sparse'][0][1])
+#     data2['FetchPickAndPlace-v1']['her-sparse'][0] = (data2['FetchPickAndPlace-v1']['her-sparse'][0][0],np.mean(success_rates2, axis=0))
+#     data.append(data2)
+#     labels.append(args.filedir2.split("/")[-3] + "/" + args.filedir2.split("/")[-2])
+
+datas = []
+labels = []
+for filedir1 in args.filedirs1:
+    success_rates1 = []
+    for filedir in os.listdir(filedir1):
+        if filedir[:7] == 'results':
+            full_path = os.path.join(filedir1, filedir)
+            data1 = make_data(full_path)
+            # if len(data1['FetchPickAndPlace-v1']['her-sparse'][0][0]) >= 40:
             success_rates1.append(data1['FetchPickAndPlace-v1']['her-sparse'][0][1])
-
-success_rates2 = []
-for filedir in os.listdir(args.filedir2):
-    if filedir[:7] == 'results':
-        full_path = os.path.join(args.filedir2, filedir)
-        data2 = make_data(full_path)
-        if len(data2['FetchPickAndPlace-v1']['her-sparse'][0][0]) >= 100:
-            success_rates2.append(data2['FetchPickAndPlace-v1']['her-sparse'][0][1])
-
+            # print(filedir, data1)
+    data1['FetchPickAndPlace-v1']['her-sparse'][0] = (data1['FetchPickAndPlace-v1']['her-sparse'][0][0], np.mean(success_rates1, axis=0))
+    datas.append(data1)
+    labels.append([filedir1.split("/")[-3] + "/" + filedir1.split("/")[-2]])
 
 #If passed in all relevant folders on command line
 # success_rates1 = []
@@ -148,8 +168,6 @@ for filedir in os.listdir(args.filedir2):
 #     data2 = make_data(filedir)
 #     if len(data2['FetchPickAndPlace-v1']['her-sparse'][0][0]) == 100:
 #         success_rates2.append(data2['FetchPickAndPlace-v1']['her-sparse'][0][1])
-data1['FetchPickAndPlace-v1']['her-sparse'][0] = (data1['FetchPickAndPlace-v1']['her-sparse'][0][0], np.mean(success_rates1, axis=0))
-data2['FetchPickAndPlace-v1']['her-sparse'][0] = (data2['FetchPickAndPlace-v1']['her-sparse'][0][0],np.mean(success_rates2, axis=0))
 # print(data1)
 # print(np.mean(data1, axis=0))
 # print(10/0)
@@ -169,8 +187,9 @@ data2['FetchPickAndPlace-v1']['her-sparse'][0] = (data2['FetchPickAndPlace-v1'][
 
 
 # datas = [np.mean(data1, axis=0), np.mean(data2, axis=0)]
-datas = [data1, data2]
-labels = ["Original HER", "Subgoal Based HER"]
+# datas = [data1, data2]
+# datas = [data1, data2]
+# labels = ["Original HER", "Subgoal Based HER"]
 # Plot data.
 for env_id in sorted(data1.keys()):
     print('exporting {}'.format(env_id))
@@ -196,7 +215,17 @@ for env_id in sorted(data1.keys()):
     plt.title(env_id)
     plt.xlabel('Epoch')
     plt.ylabel('Median Success Rate')
+    plt.ylim(0.0,1.0)
     plt.legend()
     # plt.savefig(os.path.join('/home/eric/baselines/policies', 'fig_{}.png'.format(env_id)))
-    plt.savefig(os.path.join(args.filedir2, 'fig_{}.png'.format(env_id)))
-    # plt.savefig(os.path.join(args.dir, 'fig_{}.png'.format(env_id)))
+    # if args.filedir2 != "NA":
+    #     plt.savefig(os.path.join(args.filedir2, 'fig_{}.png'.format(env_id)))
+    # else:
+    #     plt.savefig(os.path.join(args.filedir1, 'fig_{}.png'.format(env_id)))
+    if len(args.filedirs1) == 1:
+        plt.savefig(os.path.join(args.filedirs1[0], 'fig_{}.png'.format(env_id)))
+    else:
+        file_ending = ""
+        for filedir in args.filedirs1:
+            file_ending += filedir.split("/")[-3] + "_" + filedir1.split("/")[-2] + "_"
+        plt.savefig(os.path.join("/home/eric/baselines/policies/plots/", 'fig_{}_{}.png'.format(env_id, file_ending)))
