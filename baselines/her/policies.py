@@ -59,6 +59,7 @@ class Policies:
 					#specific to this bc only 3 subgoals total, make more modular
 					if len(goal_indices) > 2:
 						goal_indices = np.concatenate((goal_indices[:2],goal_indices[-1:]))
+
 					else:
 						goal_indices = np.concatenate((goal_indices,[T]))
 					ep_Ts.append(goal_indices[self.fst_sg_per_policy[i]])

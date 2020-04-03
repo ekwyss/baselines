@@ -129,7 +129,7 @@ def configure_her(params):
     env = cached_make_env(params['make_env'])
     env.reset()
     # goal_indexes = params['goal_indexes']
-    policy_index = params['policy_index']
+    # policy_index = params['policy_index']
 
     #can add policy index here for subgoal rewards****
     def reward_fun(ag_2, g, info):  # vectorized

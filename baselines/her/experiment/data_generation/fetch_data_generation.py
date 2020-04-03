@@ -42,6 +42,21 @@ def goToGoal(env, lastObs):
     object_oriented_goal[2] += 0.03 # first make the gripper go slightly above the object
 
     timeStep = 0 #count the total number of timesteps
+
+def goToGoal(env, lastObs):
+    goal = lastObs['desired_goals'][NUMGOALS-1]
+    # goal = lastObs['desired_goals'][2]
+    objectPos = lastObs['observation'][3:6]
+    object_rel_pos = lastObs['observation'][6:9]
+    episodeAcs = []
+    episodeObs = []
+    episodeInfo = []
+    # g_ind = 0
+
+    object_oriented_goal = object_rel_pos.copy()
+    object_oriented_goal[2] += 0.03 # first make the gripper go slightly above the object
+
+    timeStep = 0 #count the total number of timesteps
     episodeObs.append(lastObs)
 
     while np.linalg.norm(object_oriented_goal) >= 0.005 and timeStep <= env._max_episode_steps:
