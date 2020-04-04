@@ -16,11 +16,13 @@ class Policies:
 		#if explicitly stated, allow for policies to be shared among multiple consecutive subgoals, else one policy per subgoal
 		# self.fst_sg_per_policy = np.arange(num_policies) if fst_sg_per_policy is None else fst_sg_per_policy
 		self.num_goals = num_policies if num_goals is None else num_goals
-		self.subgoals_achieved = 0
+		self.policies_used = 0
+		# self.subgoals_achieved = 0
 		# self.fst_sg_per_policy = [0,2]
 		#mapping from g_inds to policy_inds:
-		# self.pi_from_gi = np.arange(num_goals) if pi_from_gi is None else pi_from_gi
-		self.pi_from_gi = np.zeros(num_goals) if pi_from_gi is None else pi_from_gi
+		self.pi_from_gi = np.arange(num_goals) if pi_from_gi is None else np.array(pi_from_gi)
+		# self.pi_from_gi = np.zeros(num_goals) if pi_from_gi is None else np.array(pi_from_gi)
+		self.fst_sg_per_policy = [np.where(self.pi_from_gi == i)[0][0] for i in range(num_policies)]
 		# policy_ind = -1
 		# for sg_ind in self.fst_sg_per_policy:
 		# 	if g_ind >= sg_ind:
@@ -55,78 +57,57 @@ class Policies:
 			ep_Ts = [T]*rollout_batch_size
 			self.policies[0].store_episode(episode,ep_Ts)
 		else:
+			for j in range(rollout_batch_size):
+				goal_indices = np.where(episode_batch['info_is_success'][j] == 1)[0]
+
 			for i in range(self.num_policies):
-
 				ep_Ts = []
-				for j in range(rollout_batch_size):
-					goal_indices = np.where(episode_batch['info_is_success'][j] == 1)[0]
-
-					if self.fst_sg_per_policy[i] > len(goal_indices):
-						ep_Ts.append(0)
-						continue
-
-					#specific to this bc only 3 subgoals total, make more modular
-					if len(goal_indices) > 2:
-						goal_indices = np.concatenate((goal_indices[:2],goal_indices[-1:]))
-					else:
-						goal_indices = np.concatenate((goal_indices,[T]))
-					ep_Ts.append(goal_indices[self.fst_sg_per_policy[i]])
+				if self.fst_sg_per_policy[i] > len(goal_indices):
+					ep_Ts.append(0)
+					continue
+				if len(goal_indices) > self.num_goals-1:
+					goal_indices = np.concatenate((goal_indices[:self.num_goals-1],goal_indices[-1:]))
+				else:
+					goal_indices = np.concatenate((goal_indices,[T]))
+				ep_Ts.append(goal_indices[self.fst_sg_per_policy[i]])
 				num_candidate_transitions = sum(ep_Ts)
 				if num_candidate_transitions != 0:
 					self.subgoals_achieved = max(self.subgoals_achieved,self.fst_sg_per_policy[i])
 					self.policies[i].store_episode(episode, ep_Ts)
+			# for i in range(self.num_policies):
 
-	# def store_episodes(self,episode,ind):
-	# 	# self.subgoals_achieved = max(len(episodes) - 2,self.subgoals_achieved)
-	# 	for i in range(self.num_policies):
+			# 	ep_Ts = []
+			# 	for j in range(rollout_batch_size):
+			# 		goal_indices = np.where(episode_batch['info_is_success'][j] == 1)[0]
 
-	# 		#TERRIBLE, QUICK HACK TO ALLOW NO UPDATES TO BE MADE TOWARDS SOME POLICIES - PLS CHANGE
-	# 		episode_batch = episode
-	# 		T = episode_batch['u'].shape[1]
-	# 		rollout_batch_size = episode_batch['u'].shape[0]
-	# 		ep_Ts = []
-	# 		for j in range(rollout_batch_size):
-	# 			goal_indices = np.where(episode_batch['info_is_success'][j] == 1)[0]
-	# 			# print(goal_indices)
-	# 			# if len(goal_indices) == 0:
-	# 				# ep_Ts.append(T)
-	# 				# continue
-	# 			if i > len(goal_indices):
-	# 				ep_Ts.append(0)
-	# 				continue
-	# 			#specific to this bc only 3 subgoals total
-	# 			if len(goal_indices) > 2:
-	# 				goal_indices = np.concatenate((goal_indices[:2],goal_indices[-1:]))
-	# 			else:
-	# 				goal_indices = np.concatenate((goal_indices,[T]))
-	# 			# print(goal_indices)
-	# 			ep_Ts.append(goal_indices[i])
-	# 		# print(policy_index)
-	# 		# print(ep_Ts)
-	# 		num_candidate_transitions = sum(ep_Ts)
-	# 		if num_candidate_transitions != 0:
-	# 			self.subgoals_achieved = max(self.subgoals_achieved,i+1)
-	# 			self.policies[i].store_episode(episode)
+			# 		if self.fst_sg_per_policy[i] > len(goal_indices):
+			# 			ep_Ts.append(0)
+			# 			continue
+
+			# 		#specific to this bc only 3 subgoals total, make more modular
+			# 		if len(goal_indices) > 2:
+			# 			goal_indices = np.concatenate((goal_indices[:2],goal_indices[-1:]))
+			# 		else:
+			# 			goal_indices = np.concatenate((goal_indices,[T]))
+			# 		ep_Ts.append(goal_indices[self.fst_sg_per_policy[i]])
+			# 	num_candidate_transitions = sum(ep_Ts)
+			# 	if num_candidate_transitions != 0:
+			# 		self.subgoals_achieved = max(self.subgoals_achieved,self.fst_sg_per_policy[i])
+			# 		self.policies[i].store_episode(episode, ep_Ts)
 
 	def train(self):
 		for i in range(self.num_policies):
 			# if self.subgoals_achieved >= self.fst_sg_per_policy[i]:
-			if self.subgoals_achieved >= self.pi_from_gi[i]:
+			if self.policies_used >= i:
 				self.policies[i].train()
-		# for i in range(self.subgoals_achieved):
-		# 	self.policies[i].train()
-		# for policy in self.policies:
-			# policy.train()
+
 
 	def update_target_nets(self):
 		for i in range(self.num_policies):
 			# if self.subgoals_achieved >= self.fst_sg_per_policy[i]:
-			if self.subgoals_achieved >= self.pi_from_gi[i]:
+			# if self.subgoals_achieved >= self.pi_from_gi[i]:
+			if self.policies_used >= i:
 				self.policies[i].update_target_net()
-		# for i in range(self.subgoals_achieved):
-		# 	self.policies[i].update_target_net()
-		# for policy in self.policies:
-			# policy.update_target_net()
 
 	def record_logs(self, logger):
 		prefixes = ['p' + str(i) for i in range(self.num_policies)]
@@ -135,6 +116,7 @@ class Policies:
 				logger.record_tabular(key, mpi_average(val))
 
 	def step(self,obs,goal_index):
+		print("goal_index: ",goal_index)
 		# actions = self.get_actions(obs['observation'], obs['achieved_goal'], obs['desired_goals'],goal_index)
 		actions = self.get_actions(obs['observation'], obs['achieved_goal'], obs['desired_goal'],goal_index)
 		return actions, None, None, None

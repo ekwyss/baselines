@@ -50,7 +50,7 @@ def huber_loss(x, delta=1.0):
 
 def get_session(config=None):
     """Get default session or create one with a given config"""
-    sess = tf.get_default_session()
+    sess = tf.compat.v1.get_default_session()
     if sess is None:
         sess = make_session(config=config, make_default=True)
     return sess
@@ -60,16 +60,16 @@ def make_session(config=None, num_cpu=None, make_default=False, graph=None):
     if num_cpu is None:
         num_cpu = int(os.getenv('RCALL_NUM_CPU', multiprocessing.cpu_count()))
     if config is None:
-        config = tf.ConfigProto(
+        config = tf.compat.v1.ConfigProto(
             allow_soft_placement=True,
             inter_op_parallelism_threads=num_cpu,
             intra_op_parallelism_threads=num_cpu)
         config.gpu_options.allow_growth = True
 
     if make_default:
-        return tf.InteractiveSession(config=config, graph=graph)
+        return tf.compat.v1.InteractiveSession(config=config, graph=graph)
     else:
-        return tf.Session(config=config, graph=graph)
+        return tf.compat.v1.Session(config=config, graph=graph)
 
 def single_threaded_session():
     """Returns a session which will only use a single CPU"""
@@ -242,24 +242,24 @@ class SetFromFlat(object):
         shapes = list(map(var_shape, var_list))
         total_size = np.sum([intprod(shape) for shape in shapes])
 
-        self.theta = theta = tf.placeholder(dtype, [total_size])
+        self.theta = theta = tf.compat.v1.placeholder(dtype, [total_size])
         start = 0
         assigns = []
         for (shape, v) in zip(shapes, var_list):
             size = intprod(shape)
-            assigns.append(tf.assign(v, tf.reshape(theta[start:start + size], shape)))
+            assigns.append(tf.compat.v1.assign(v, tf.reshape(theta[start:start + size], shape)))
             start += size
         self.op = tf.group(*assigns)
 
     def __call__(self, theta):
-        tf.get_default_session().run(self.op, feed_dict={self.theta: theta})
+        tf.compat.v1.get_default_session().run(self.op, feed_dict={self.theta: theta})
 
 class GetFlat(object):
     def __init__(self, var_list):
         self.op = tf.concat(axis=0, values=[tf.reshape(v, [numel(v)]) for v in var_list])
 
     def __call__(self):
-        return tf.get_default_session().run(self.op)
+        return tf.compat.v1.get_default_session().run(self.op)
 
 def flattenallbut0(x):
     return tf.reshape(x, [-1, intprod(x.get_shape().as_list()[1:])])

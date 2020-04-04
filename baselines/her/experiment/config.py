@@ -76,7 +76,8 @@ def prepare_params(kwargs):
     env_name = kwargs['env_name']
 
     def make_env(subrank=None):
-        env = gym.make(env_name)
+        env_kwargs = {'num_goals' : 3, 'subgoal_rewards' : np.array([5.,5.,20.])}
+        env = gym.make(env_name, **env_kwargs)
         if subrank is not None and logger.get_dir() is not None:
             try:
                 from mpi4py import MPI
@@ -128,7 +129,7 @@ def configure_her(params):
     env = cached_make_env(params['make_env'])
     env.reset()
     # goal_indexes = params['goal_indexes']
-    policy_index = params['policy_index']
+    # policy_index = params['policy_index']
 
     #can add policy index here for subgoal rewards****
     def reward_fun(ag_2, g, info):  # vectorized
@@ -138,7 +139,7 @@ def configure_her(params):
     her_params = {
         'reward_fun': reward_fun,
         # 'policy_indexes': goal_indexes,
-        'policy_index': policy_index,
+        # 'policy_index': policy_index,
     }
     for name in ['replay_strategy', 'replay_k']:
         her_params[name] = params[name]

@@ -103,14 +103,14 @@ def build_env(args):
             env = VecFrameStack(env, frame_stack_size)
 
     else:
-        config = tf.ConfigProto(allow_soft_placement=True,
+        config = tf.compat.v1.ConfigProto(allow_soft_placement=True,
                                intra_op_parallelism_threads=1,
                                inter_op_parallelism_threads=1)
         config.gpu_options.allow_growth = True
         get_session(config=config)
 
         flatten_dict_observations = alg not in {'her'}
-        env = make_vec_env(env_id, env_type, args.num_env or 1, seed, reward_scale=args.reward_scale, flatten_dict_observations=flatten_dict_observations, env_kwargs = {'num_goals' : 3, 'subgoal_rewards' : [0,0,0]})
+        env = make_vec_env(env_id, env_type, args.num_env or 1, seed, reward_scale=args.reward_scale, flatten_dict_observations=flatten_dict_observations, env_kwargs = {'num_goals' : 3, 'subgoal_rewards' : [5.,5.,20.]})
 
         if env_type == 'mujoco':
             env = VecNormalize(env, use_tf=True)
@@ -227,17 +227,19 @@ def main(args):
         dones = np.zeros((1,))
 
         episode_rew = np.zeros(env.num_envs) if isinstance(env, VecEnv) else np.zeros(1)
-        goal_ind = 0
+        goal_ind = [0]
         num_goals = model.num_goals
         while True:
             if state is not None:
                 actions, _, state, _ = model.step(obs, goal_ind, S=state, M=dones)
             else:
                 actions, _, _, _ = model.step(obs, goal_ind)
-
+            
             obs, rew, done, _ = env.step(actions)
-            if rew != -1 and goal_ind < num_goals-1:
-                goal_ind += 1
+
+            goal_ind = info[0]['goal_index']
+            # if rew != -1 and goal_ind < num_goals-1:
+                # goal_ind += 1
             episode_rew += rew
             env.render()
             done_any = done.any() if isinstance(done, np.ndarray) else done
@@ -245,7 +247,7 @@ def main(args):
                 for i in np.nonzero(done)[0]:
                     print('episode_rew={}'.format(episode_rew[i]))
                     episode_rew[i] = 0
-                    goal_ind = 0
+                    goal_ind = [0]
 
     env.close()
 

@@ -3,7 +3,7 @@ import pickle
 # TODO: have both sampler run on every episode and compare
       # also check place where it decides whether to update or not
 
-def make_sample_her_transitions(replay_strategy, replay_k, reward_fun, policy_index):
+def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):#, policy_index):
     """Creates a sample function that can be used for HER experience replay.
 
     Args:
