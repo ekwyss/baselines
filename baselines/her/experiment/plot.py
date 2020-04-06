@@ -7,6 +7,10 @@ import json
 import seaborn as sns; sns.set()
 import glob2
 import argparse
+from matplotlib.font_manager import FontProperties
+
+fontP = FontProperties()
+fontP.set_size('small')
 
 
 def smooth_reward_curve(x, y):
@@ -60,6 +64,7 @@ parser.add_argument('-filedirs1', nargs='+', type=str)
 # parser.add_argument('-filedirs2', nargs='+', type=str)
 parser.add_argument('-num_epochs', type=int)
 # parser.add_argument('-num_epochs', type=int)
+parser.add_argument('-outfile', type=str)
 args = parser.parse_args()
 # filedir1 = "/home/eric/baselines/policies/her500000Output"
 # filedir2 = "/home/eric/baselines/policies/150000"
@@ -154,7 +159,8 @@ for filedir1 in args.filedirs1:
             # print(filedir, data1)
     data1['FetchPickAndPlace-v1']['her-sparse'][0] = (data1['FetchPickAndPlace-v1']['her-sparse'][0][0], np.mean(success_rates1, axis=0))
     datas.append(data1)
-    labels.append([filedir1.split("/")[-3] + "/" + filedir1.split("/")[-2]])
+    labels.append([filedir1.split("/")[-2]])
+    # labels.append([filedir1.split("/")[-3] + "/" + filedir1.split("/")[-2]])
 
 #If passed in all relevant folders on command line
 # success_rates1 = []
@@ -216,16 +222,20 @@ for env_id in sorted(data1.keys()):
     plt.xlabel('Epoch')
     plt.ylabel('Median Success Rate')
     plt.ylim(0.0,1.0)
-    plt.legend()
+    plt.legend(loc='lower right', prop=fontP)
     # plt.savefig(os.path.join('/home/eric/baselines/policies', 'fig_{}.png'.format(env_id)))
     # if args.filedir2 != "NA":
     #     plt.savefig(os.path.join(args.filedir2, 'fig_{}.png'.format(env_id)))
     # else:
     #     plt.savefig(os.path.join(args.filedir1, 'fig_{}.png'.format(env_id)))
-    if len(args.filedirs1) == 1:
-        plt.savefig(os.path.join(args.filedirs1[0], 'fig_{}.png'.format(env_id)))
-    else:
-        file_ending = ""
-        for filedir in args.filedirs1:
-            file_ending += filedir.split("/")[-3] + "_" + filedir1.split("/")[-2] + "_"
-        plt.savefig(os.path.join("/home/eric/baselines/policies/plots/", 'fig_{}_{}.png'.format(env_id, file_ending)))
+
+    # if len(args.filedirs1) == 1:
+    #     plt.savefig(os.path.join(args.filedirs1[0], 'fig_{}.png'.format(env_id)))
+    # else:
+    #     file_ending = ""
+    #     for filedir in args.filedirs1:
+    #         file_ending += filedir.split("/")[-3] + "_" + filedir1.split("/")[-2] + "_"
+    #     plt.savefig(os.path.join("/home/eric/baselines/policies/plots/", 'fig_{}_{}.png'.format(env_id, file_ending)))
+    plt.savefig(args.outfile)
+
+ # python3.6 baselines/baselines/her/experiment/plot.py -filedirs1 /home/eric/baselines/policies/goalind/5_5_20_nodemo_nosgrewinER/  /home/eric/baselines/policies/goalind/5_5_20_1demo_nosgrewinER/  /home/eric/baselines/policies/goalind/5_5_20_10demo_nosgrewinER/ /home/eric/baselines/policies/goalind/5_5_20_100demo_nosgrewinER/ /home/eric/baselines/policies/original_her/100demo/ /home/eric/baselines/policies/original_her/nodemo/ -num_epochs 100 -outfile /home/eric/baselines/policies/plots/GripConstraint_5_5_20_noERsgrew_comp.png

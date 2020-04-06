@@ -167,6 +167,9 @@ class DDPG(object):
         demo_data_obs = demoData['obs']
         demo_data_acs = demoData['acs']
         demo_data_info = demoData['info']
+        # print(demo_data_info)
+        # print(info_keys)
+        # print(info_values)
 
         for epsd in range(self.num_demo): # we initialize the whole demo buffer at the start of the training
             obs, acts, goals, achieved_goals = [], [] ,[] ,[]

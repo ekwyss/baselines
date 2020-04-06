@@ -15,7 +15,7 @@ class FetchEnv(robot_env.RobotEnv):
     def __init__(
         self, model_path, n_substeps, gripper_extra_height, block_gripper,
         has_object, target_in_the_air, target_offset, obj_range, target_range,
-        distance_threshold, initial_qpos, reward_type,
+        distance_threshold, initial_qpos, reward_type, num_goals, subgoal_rewards, use_g_ind
     ):
         """Initializes a new Fetch environment.
 
@@ -42,6 +42,9 @@ class FetchEnv(robot_env.RobotEnv):
         self.target_range = target_range
         self.distance_threshold = distance_threshold#*0.8
         self.reward_type = reward_type
+        self.num_goals = num_goals
+        self.subgoal_rewards = subgoal_rewards
+        self.use_g_ind = use_g_ind
 
         super(FetchEnv, self).__init__(
             model_path=model_path, n_substeps=n_substeps, n_actions=4,
@@ -52,10 +55,43 @@ class FetchEnv(robot_env.RobotEnv):
 
     def compute_reward(self, achieved_goal, goal, info):
         d = goal_distance(achieved_goal, goal)
-        if self.reward_type == 'sparse':
+        if self.use_g_ind == False:
             return -(d > self.distance_threshold).astype(np.float32)
+
+        if self.reward_type == 'sparse':
+            if np.isscalar(d):
+                # hardcode necessity for subgoal 2 gripper constraint
+                if (info['goal_index']) == 1:
+                    if info['gripper_width'] > 0.052:
+                        return -1.0
+
+                # SG REW IN REALTIME SIMULATION
+                if info['goal_reached'] == False:
+                    return self.subgoal_rewards[int(info['goal_index'])].astype(np.float32) if d <= self.distance_threshold else -1.0
+                else:
+                    return -(d > self.distance_threshold).astype(np.float32)
+
+                # NO SG REW IN REALTIME SIMULATION
+                # return -(d > self.distance_threshold).astype(np.float32)
+            else:
+                # EXPERIENCE REPLAY
+                rews = np.zeros(len(d), dtype=np.float32)
+                for i in range(len(rews)):
+                    # hardcode necessity for subgoal 2 gripper constraint
+                    if info['goal_index'][i] == 1 and info['gripper_width'][i] > 0.052:
+                        rews[i] = -1.0
+                        continue
+                    #SGREW IN EXPERIENCE REPLAY
+                    # rews[i] = -(d[i] <= self.distance_threshold).astype(np.float32) if info['goal_reached'][i] == True else (self.subgoal_rewards[int(info['goal_index'][i])].astype(np.float32) if d[i] <= self.distance_threshold else -1.0)
+                    rews[i] = (self.subgoal_rewards[int(info['goal_index'][i])].astype(np.float32) if d[i] <= self.distance_threshold else -1.0)
+                    #NO SGREW IN EXPERIENCE REPLAY
+                    # rews[i] = -(d[i] <= self.distance_threshold).astype(np.float32)
+                return rews
         else:
             return -d
+
+        # return -(d > self.distance_threshold).astype(np.float32)
+
 
     # RobotEnv methods
     # ----------------------------
@@ -67,6 +103,7 @@ class FetchEnv(robot_env.RobotEnv):
             self.sim.forward()
 
     def _set_action(self, action):
+        # print(action)
         assert action.shape == (4,)
         action = action.copy()  # ensure that we don't change the action outside of this scope
         pos_ctrl, gripper_ctrl = action[:3], action[3]
@@ -83,7 +120,7 @@ class FetchEnv(robot_env.RobotEnv):
         utils.ctrl_set_action(self.sim, action)
         utils.mocap_set_action(self.sim, action)
 
-    def _get_obs(self, subgoal = None):
+    def _get_obs(self):
         # positions
         grip_pos = self.sim.data.get_site_xpos('robot0:grip')
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
@@ -112,11 +149,11 @@ class FetchEnv(robot_env.RobotEnv):
             grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
             object_velp.ravel(), object_velr.ravel(), grip_velp, gripper_vel,
         ])
-        # print(obs)
-        # subgoal_feature = True
-        if subgoal_feature is not None:
-            obs = np.concatenate([obs,[subgoal]])
-        # print(obs)
+        # print("gripper_state: ",gripper_state)
+        # print(obs.shape)
+        if self.use_g_ind == True:
+            obs = np.concatenate([obs,[self.goal_index]])
+        # print(obs.shape)
 
         return {
             'observation': obs.copy(),
