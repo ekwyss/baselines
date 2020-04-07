@@ -84,7 +84,7 @@ class DDPG(object):
         self.stage_shapes = stage_shapes
 
         # Create network.
-        print(self.scope)
+        # print(self.scope)
         with tf.compat.v1.variable_scope(self.scope):
             self.staging_tf = StagingArea(
                 dtypes=[tf.float32 for _ in self.stage_shapes.keys()],
@@ -191,7 +191,9 @@ class DDPG(object):
                 episode['info_{}'.format(key)] = value
 
             episode = convert_episode_to_batch_major(episode)
+            print(episode)
             global DEMO_BUFFER
+            print(DEMO_BUFFER)
             DEMO_BUFFER.store_episode(episode) # create the observation dict and append them into the demonstration buffer
             logger.debug("Demo buffer size currently ", DEMO_BUFFER.get_current_size()) #print out the demonstration buffer size
 
@@ -241,8 +243,8 @@ class DDPG(object):
 
             self.o_stats.recompute_stats()
             self.g_stats.recompute_stats()
-            print("o_store:",self.o_stats)
-            print("g_store:",self.g_stats)
+            # print("o_store:",self.o_stats)
+            # print("g_store:",self.g_stats)
 
     def get_current_buffer_size(self):
         return self.buffer.get_current_size()
@@ -320,19 +322,19 @@ class DDPG(object):
     def _create_network(self, reuse=False):
         logger.info("Creating a DDPG agent with action space %d x %s..." % (self.dimu, self.max_u))
         self.sess = tf_util.get_session()
-        print("sess:",self.sess)
+        # print("sess:",self.sess)
 
         # running averages
         with tf.compat.v1.variable_scope('o_stats') as vs:
             if reuse:
                 vs.reuse_variables()
             self.o_stats = Normalizer(self.dimo, self.norm_eps, self.norm_clip, sess=self.sess)
-            print(self.scope, "o:", self.o_stats)
+            # print(self.scope, "o:", self.o_stats)
         with tf.compat.v1.variable_scope('g_stats') as vs:
             if reuse:
                 vs.reuse_variables()
             self.g_stats = Normalizer(self.dimg, self.norm_eps, self.norm_clip, sess=self.sess)
-            print(self.scope, "g:", self.g_stats)
+            # print(self.scope, "g:", self.g_stats)
 
         # mini-batch sampling.
         batch = self.staging_tf.get()
@@ -348,6 +350,7 @@ class DDPG(object):
             if reuse:
                 vs.reuse_variables()
             self.main = self.create_actor_critic(batch_tf, net_type='main', **self.__dict__)
+            # print(self.scope, "main: ", self.main)
             vs.reuse_variables()
         with tf.compat.v1.variable_scope('target') as vs:
             if reuse:
@@ -357,6 +360,7 @@ class DDPG(object):
             target_batch_tf['g'] = batch_tf['g_2']
             self.target = self.create_actor_critic(
                 target_batch_tf, net_type='target', **self.__dict__)
+            # print(self.scope, "target: ", self.target)
             vs.reuse_variables()
         assert len(self._vars("main")) == len(self._vars("target"))
 
@@ -365,6 +369,7 @@ class DDPG(object):
         clip_range = (-self.clip_return, 0. if self.clip_pos_returns else np.inf)
         target_tf = tf.clip_by_value(batch_tf['r'] + self.gamma * target_Q_pi_tf, *clip_range)
         self.Q_loss_tf = tf.reduce_mean(tf.square(tf.stop_gradient(target_tf) - self.main.Q_tf))
+        # print(self.Q_loss_tf)
 
         if self.bc_loss ==1 and self.q_filter == 1 : # train with demonstrations and use bc_loss and q_filter both
             maskMain = tf.reshape(tf.boolean_mask(self.main.Q_tf > self.main.Q_pi_tf, mask), [-1]) #where is the demonstrator action better than actor action according to the critic? choose those samples only
@@ -383,6 +388,7 @@ class DDPG(object):
         else: #If  not training with demonstrations
             self.pi_loss_tf = -tf.reduce_mean(self.main.Q_pi_tf)
             self.pi_loss_tf += self.action_l2 * tf.reduce_mean(tf.square(self.main.pi_tf / self.max_u))
+            # print(self.pi_loss_tf)
 
         Q_grads_tf = tf.gradients(self.Q_loss_tf, self._vars('main/Q'))
         pi_grads_tf = tf.gradients(self.pi_loss_tf, self._vars('main/pi'))

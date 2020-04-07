@@ -66,7 +66,7 @@ class RolloutWorker:
 
         # generate episodes
         obs, achieved_goals, acts, goals, successes = [], [], [], [], []
-        consistent_sgss = []
+        # consistent_sgss = []
         dones = []
         info_values = [np.empty((self.T - 1, self.rollout_batch_size, self.dims['info_' + key]), np.float32) for key in self.info_keys]
         Qs = []
@@ -135,7 +135,7 @@ class RolloutWorker:
             #TODO: All definitely only works for one env, extend for any num
             # g_index_new = obs_dict_new['goal_index'] #make sure this doesn't change outside of this
             # consistent_sgs = info[0]['consistent_subgoals'] 
-            consistent_sgs = np.array([i.get('consistent_subgoals', 0.0) for i in info])
+            # consistent_sgs = np.array([i.get('consistent_subgoals', 0.0) for i in info])
 
             o_new = obs_dict_new['observation']
             ag_new = obs_dict_new['achieved_goal']
@@ -181,7 +181,7 @@ class RolloutWorker:
                 self.reset_all_rollouts()
                 return self.generate_rollouts()
 
-            consistent_sgss.append(consistent_sgs.copy())
+            # consistent_sgss.append(consistent_sgs.copy())
             dones.append(done)
             obs.append(o.copy())
             achieved_goals.append(ag.copy())
@@ -203,8 +203,8 @@ class RolloutWorker:
         episode = dict(o=obs,
                        u=acts,
                        g=goals,
-                       ag=achieved_goals,
-                       sgt=consistent_sgss)
+                       ag=achieved_goals)#,
+                       #sgt=consistent_sgss)
         for key, value in zip(self.info_keys, info_values):
             episode['info_{}'.format(key)] = value
 

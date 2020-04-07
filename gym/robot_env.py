@@ -36,23 +36,14 @@ class RobotEnv(gym.GoalEnv):
         self._env_setup(initial_qpos=initial_qpos)
         self.initial_state = copy.deepcopy(self.sim.get_state())
 
-        self.num_goals = 1#3
         self.goals = self._sample_goals()
-        if self.num_goals == 1:
-            self.subgoal_rewards = [0]
-        elif self.num_goals == 2:
-            self.subgoal_rewards = [5,10]
-        else:
-            # self.subgoal_rewards = [5,5,20]
-            self.subgoal_rewards = [0,0,0]
         self.goal_index = 0
         self.goal = self.goals[self.goal_index]
+        self.goal_reached = False
         obs = self._get_obs()
         self.action_space = spaces.Box(-1., 1., shape=(n_actions,), dtype='float32')
         self.observation_space = spaces.Dict(dict(
             desired_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
-            # desired_goal=spaces.Box(-np.inf, np.inf, shape=obs['desired_goal'].shape, dtype='float32'),
-            # goal_index=spaces.Discrete(len(self.subgoal_rewards)),
             desired_goals=spaces.Box(-np.inf, np.inf, shape=obs['desired_goals'].shape, dtype='float32'),
             achieved_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
             observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
@@ -69,30 +60,39 @@ class RobotEnv(gym.GoalEnv):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def step(self, action, goal_index):
-        goal = self.goals[goal_index].copy()
+    def step(self, action):
+        goal = self.goals[self.goal_index].copy()
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self._set_action(action)
         self.sim.step()
         self._step_callback()
-        obs = self._get_obs(goal_index)
+        obs = self._get_obs()
 
         done = False
         info = {
-            'is_success': self._is_success(obs['achieved_goal'], goal),
+            'is_success': self._is_success(obs['achieved_goal'], goal,self.goal_index), #orig
+            # 'goal_index': self.goal_index,
+            # 'goal_reached': self.goal_reached
             # 'consistent_subgoals': [self._is_success(obs['achieved_goal'],goal) for goal in self.goals]
             #first two are if hand is close and last is if object is close
             # 'consistent_subgoals': [self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[0]), self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[1]), self._is_success(self.sim.data.get_site_xpos('object0'),self.goals[2])]
             # 'consistent_subgoals': [self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[0])]
             # 'consistent_subgoals': [self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[i]) for i in range(self.num_goals)]
         }
+        if self.use_g_ind == True:
+            info['goal_index'] = self.goal_index
+            info['goal_reached'] = self.goal_reached
+            info['gripper_width'] = self.sim.data.get_joint_qpos('robot0:l_gripper_finger_joint') + self.sim.data.get_joint_qpos('robot0:r_gripper_finger_joint')
         reward = self.compute_reward(obs['achieved_goal'], goal, info)#self.goal
         #give subgoal reward instead if achieving subgoals
-        if reward != -1:# and self.goal_index < len(self.goals)-1:
-            reward = self.subgoal_rewards[self.goal_index]
-            if self.goal_index < len(self.goals)-1:
+        if reward != -1 and not self.goal_reached:# and self.goal_index < len(self.goals)-1: #second part was commented out
+            # reward = self.subgoal_rewards[self.goal_index]
+            if self.goal_index == self.num_goals-1:
+                self.goal_reached = True
+            if self.goal_index < self.num_goals-1:
                 self.goal_index += 1
                 self.goal = self.goals[self.goal_index]
+        # info['goal_index'] = self.goal_index
         return obs, reward, done, info
 
     def reset(self):
@@ -108,7 +108,7 @@ class RobotEnv(gym.GoalEnv):
         self.goals = self._sample_goals()
         self.goal_index = 0
         self.goal = self.goals[self.goal_index]
-        # self.goal = self._sample_goal().copy()
+        self.goal_reached = False
         obs = self._get_obs()
         return obs
 

@@ -76,7 +76,7 @@ def prepare_params(kwargs):
     env_name = kwargs['env_name']
 
     def make_env(subrank=None):
-        env_kwargs = {'num_goals' : 3, 'subgoal_rewards' : np.array([5.,5.,20.])}
+        env_kwargs = {'num_goals' : 3, 'subgoal_rewards' : np.array([5.,5.,20.]), 'use_g_ind' : True}
         env = gym.make(env_name, **env_kwargs)
         if subrank is not None and logger.get_dir() is not None:
             try:

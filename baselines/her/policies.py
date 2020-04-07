@@ -46,6 +46,7 @@ class Policies:
 		#TODO: make sure this is working as intended
 		for policy in self.policies:
 			policy.init_demo_buffer(demo_file)
+		#Prob just want this bc will be same for all
 		# self.policies[0].init_demo_buffer(demo_file)
 
 	def store_episodes(self,episode):
@@ -57,23 +58,33 @@ class Policies:
 			ep_Ts = [T]*rollout_batch_size
 			self.policies[0].store_episode(episode,ep_Ts)
 		else:
+			# ep_Ts = [[]*rollout_batch_size]
+			ep_Ts = [[[] for i in range(self.num_policies)] for j in range(rollout_batch_size)]
 			for j in range(rollout_batch_size):
 				goal_indices = np.where(episode_batch['info_is_success'][j] == 1)[0]
+				num_ginds = len(goal_indices)
 
-			for i in range(self.num_policies):
-				ep_Ts = []
-				if self.fst_sg_per_policy[i] > len(goal_indices):
-					ep_Ts.append(0)
-					continue
-				if len(goal_indices) > self.num_goals-1:
+				if num_ginds > self.num_goals-1:
 					goal_indices = np.concatenate((goal_indices[:self.num_goals-1],goal_indices[-1:]))
 				else:
 					goal_indices = np.concatenate((goal_indices,[T]))
-				ep_Ts.append(goal_indices[self.fst_sg_per_policy[i]])
-				num_candidate_transitions = sum(ep_Ts)
+
+				for i in range(self.num_policies):
+					if self.fst_sg_per_policy[i] > num_ginds:
+						ep_Ts[j][i].append(0)
+						continue
+					ep_Ts[j][i].append(goal_indices[self.fst_sg_per_policy[i]])
+			# print(ep_Ts)
+			for i in range(self.num_policies):
+				ep_T = [ep_Ts[j][i][0] for j in range(rollout_batch_size)]
+				# print(ep_T)
+				num_candidate_transitions = sum(ep_T)
+				# print(num_candidate_transitions)
 				if num_candidate_transitions != 0:
-					self.subgoals_achieved = max(self.subgoals_achieved,self.fst_sg_per_policy[i])
-					self.policies[i].store_episode(episode, ep_Ts)
+					# self.subgoals_achieved = max(self.subgoals_achieved,self.fst_sg_per_policy[i])
+					self.policies_used = max(self.policies_used,i)
+					self.policies[i].store_episode(episode, ep_T)
+
 			# for i in range(self.num_policies):
 
 			# 	ep_Ts = []
@@ -95,6 +106,7 @@ class Policies:
 			# 		self.subgoals_achieved = max(self.subgoals_achieved,self.fst_sg_per_policy[i])
 			# 		self.policies[i].store_episode(episode, ep_Ts)
 
+#Split computation between all policies?
 	def train(self):
 		for i in range(self.num_policies):
 			# if self.subgoals_achieved >= self.fst_sg_per_policy[i]:
@@ -124,13 +136,19 @@ class Policies:
 	# def get_actions(self, o, ag, g, g_ind, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):
 	def get_actions(self, o, ag, gs, g_inds, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):
 		policy_inds = np.array([self.pi_from_gi[g_ind] for g_ind in g_inds])
+		# print(g_inds)
 		# print(policy_inds)
-		acts = []
+		#TODO replace with action space dim, hardcoded 4
+		acts = np.zeros((len(g_inds),4))
 		for i in range(self.num_policies):
 			# print(i)
-			inds = np.where(policy_inds == i)
+			inds = np.where(policy_inds == i)[0]
+			# print(inds)
 			p_acts = self.policies[i].get_actions(o[inds], ag[inds], gs[inds],compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net)
-			acts = p_acts if i == 0 else acts+p_acts
+			# print(i, "p_acts:", p_acts)
+			# acts = p_acts if i == 0 else acts+p_acts
+			acts[inds] = p_acts
+			# print(i, "acts:", acts)
 			# print("output")
 			# print(self.policies[i].get_actions(o[inds], ag[inds], gs[inds],compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net))
 			# output += self.policies[i].get_actions(o[inds], ag[inds], gs[inds],compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net)
