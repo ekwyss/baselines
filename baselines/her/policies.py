@@ -34,9 +34,9 @@ class Policies:
 
 	def init_demo_buffer(self, demo_file):
 		#TODO: make sure this is working as intended
-		for policy in self.policies:
-			policy.init_demo_buffer(demo_file)
-		# self.policies[0].init_demo_buffer(demo_file)
+		# for policy in self.policies:
+			# policy.init_demo_buffer(demo_file)
+		self.policies[0].init_demo_buffer(demo_file)
 
 	def store_episodes(self,episode):
 		episode_batch = episode
