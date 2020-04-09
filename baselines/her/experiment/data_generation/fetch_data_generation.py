@@ -23,7 +23,7 @@ def main():
     fileName = "data_fetch"
     fileName += "_" + initStateSpace
     fileName += "_" + str(numItr)
-    fileName += ".npz"
+    fileName += "_original_shaped.npz"
 
     np.savez_compressed(fileName, acs=actions, obs=observations, info=infos) # save the file
 
@@ -53,7 +53,8 @@ def goToGoal(env, lastObs):
 
         action[len(action)-1] = 0.05 #open
 
-        obsDataNew, reward, done, info = env.step(action,0)
+        obsDataNew, reward, done, info = env.step(action)
+        print(reward)
         timeStep += 1
 
         episodeAcs.append(action)
@@ -71,8 +72,9 @@ def goToGoal(env, lastObs):
 
         action[len(action)-1] = -0.005
 
-        obsDataNew, reward, done, info = env.step(action,0)
+        obsDataNew, reward, done, info = env.step(action)
         timeStep += 1
+        print(reward)
 
         episodeAcs.append(action)
         episodeInfo.append(info)
@@ -90,8 +92,9 @@ def goToGoal(env, lastObs):
 
         action[len(action)-1] = -0.005
 
-        obsDataNew, reward, done, info = env.step(action,0)
+        obsDataNew, reward, done, info = env.step(action)
         timeStep += 1
+        print(reward)
 
         episodeAcs.append(action)
         episodeInfo.append(info)
@@ -105,8 +108,9 @@ def goToGoal(env, lastObs):
         action = [0, 0, 0, 0]
         action[len(action)-1] = -0.005 # keep the gripper closed
 
-        obsDataNew, reward, done, info = env.step(action,0)
+        obsDataNew, reward, done, info = env.step(action)
         timeStep += 1
+        print(reward)
 
         episodeAcs.append(action)
         episodeInfo.append(info)

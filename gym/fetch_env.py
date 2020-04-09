@@ -40,7 +40,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.target_offset = target_offset
         self.obj_range = obj_range
         self.target_range = target_range
-        self.distance_threshold = distance_threshold#*0.8
+        self.distance_threshold = distance_threshold
         self.reward_type = reward_type
 
         super(FetchEnv, self).__init__(
@@ -51,6 +51,7 @@ class FetchEnv(robot_env.RobotEnv):
     # ----------------------------
 
     def compute_reward(self, achieved_goal, goal, info):
+        # Compute distance between goal and the achieved goal.
         d = goal_distance(achieved_goal, goal)
         if self.reward_type == 'sparse':
             return -(d > self.distance_threshold).astype(np.float32)
@@ -83,7 +84,7 @@ class FetchEnv(robot_env.RobotEnv):
         utils.ctrl_set_action(self.sim, action)
         utils.mocap_set_action(self.sim, action)
 
-    def _get_obs(self, subgoal = None):
+    def _get_obs(self):
         # positions
         grip_pos = self.sim.data.get_site_xpos('robot0:grip')
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
@@ -104,7 +105,7 @@ class FetchEnv(robot_env.RobotEnv):
         gripper_state = robot_qpos[-2:]
         gripper_vel = robot_qvel[-2:] * dt  # change to a scalar if the gripper is made symmetric
 
-        if (not self.has_object) or self.goal_index < len(self.goals)-1:
+        if not self.has_object:
             achieved_goal = grip_pos.copy()
         else:
             achieved_goal = np.squeeze(object_pos.copy())
@@ -112,19 +113,11 @@ class FetchEnv(robot_env.RobotEnv):
             grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
             object_velp.ravel(), object_velr.ravel(), grip_velp, gripper_vel,
         ])
-        # print(obs)
-        # subgoal_feature = True
-        if subgoal_feature is not None:
-            obs = np.concatenate([obs,[subgoal]])
-        # print(obs)
 
         return {
             'observation': obs.copy(),
             'achieved_goal': achieved_goal.copy(),
             'desired_goal': self.goal.copy(),
-            # 'goal_index': self.goal_index,
-            'desired_goals': self.goals.copy(),
-            # 'desired_goal': self.goals.copy(),
         }
 
     def _viewer_setup(self):
@@ -140,10 +133,7 @@ class FetchEnv(robot_env.RobotEnv):
         # Visualize target.
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
         site_id = self.sim.model.site_name2id('target0')
-
-        goal_pos = self.goals[self.goal_index].copy()
-        self.sim.model.site_pos[site_id] = goal_pos - sites_offset[0]
-
+        self.sim.model.site_pos[site_id] = self.goal - sites_offset[0]
         self.sim.forward()
 
     def _reset_sim(self):
@@ -162,26 +152,8 @@ class FetchEnv(robot_env.RobotEnv):
         self.sim.forward()
         return True
 
-    def _sample_goals(self):
-        #TODO: Specific for pick and place only, reflect this in changes
-        goals = []
+    def _sample_goal(self):
         if self.has_object:
-            object_pos = self.sim.data.get_site_xpos('object0')
-            grip_pos = self.sim.data.get_site_xpos('robot0:grip')
-
-            #preset subgoals
-            if self.num_goals > 1:
-                subgoal1 = object_pos.copy()
-                height_off = 0.05 if self.num_goals == 2 else 0.025 
-                subgoal1[2] += height_off
-                goals.append(subgoal1)
-            #TODO: incorporate clasp object for goal 2
-            if self.num_goals == 3:
-                subgoal2 = object_pos.copy()
-                subgoal2[2] -= 0.025
-                # goal2[2] -= 0.01
-                goals.append(subgoal2)
-
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range, size=3)
             goal += self.target_offset
             goal[2] = self.height_offset
@@ -189,19 +161,7 @@ class FetchEnv(robot_env.RobotEnv):
                 goal[2] += self.np_random.uniform(0, 0.45)
         else:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(-0.15, 0.15, size=3)
-        goals.append(goal.copy())
-        return np.asarray(goals)
-
-    # def _sample_goal(self):
-    #     if self.has_object:
-    #         goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range, size=3)
-    #         goal += self.target_offset
-    #         goal[2] = self.height_offset
-    #         if self.target_in_the_air and self.np_random.uniform() < 0.5:
-    #             goal[2] += self.np_random.uniform(0, 0.45)
-    #     else:
-    #         goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(-0.15, 0.15, size=3)
-    #     return goal.copy()
+        return goal.copy()
 
     def _is_success(self, achieved_goal, desired_goal):
         d = goal_distance(achieved_goal, desired_goal)
@@ -228,3 +188,4 @@ class FetchEnv(robot_env.RobotEnv):
 
     def render(self, mode='human', width=500, height=500):
         return super(FetchEnv, self).render(mode, width, height)
+
