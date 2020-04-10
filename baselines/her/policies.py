@@ -39,35 +39,44 @@ class Policies:
 		self.policies[0].init_demo_buffer(demo_file)
 
 	def store_episodes(self,episode):
-		episode_batch = episode
-		T = episode_batch['u'].shape[1]
-		rollout_batch_size = episode_batch['u'].shape[0]
-		if self.num_policies == 1:
-			ep_Ts = [T]*rollout_batch_size
-			self.policies[0].store_episode(episode,ep_Ts)
-		else:
-			for i in range(self.num_policies):
+		# episode_batch = episode
+		# T = episode_batch['u'].shape[1]
+		# rollout_batch_size = episode_batch['u'].shape[0]
+		# if self.num_policies == 1:
 
-				ep_Ts = []
-				for j in range(rollout_batch_size):
-					goal_indices = np.where(episode_batch['info_is_success'][j] == 1)[0]
 
-					if self.fst_sg_per_policy[i] > len(goal_indices):
-						ep_Ts.append(0)
-						continue
 
-					#specific to this bc only 3 subgoals total, make more modular
-					if len(goal_indices) > 2:
-						goal_indices = np.concatenate((goal_indices[:2],goal_indices[-1:]))
+			# print(np.where(episode_batch['info_is_success'][j] == 1)[0])
+			# print(np.where(episode_batch['info_goal_index'][j] == 0)[0])
+			# print(np.where(episode_batch['info_goal_index'][j] == 1)[0])
+			# print(np.where(episode_batch['info_goal_index'][j] == 2)[0])
 
-					else:
-						goal_indices = np.concatenate((goal_indices,[T]))
-					ep_Ts.append(goal_indices[self.fst_sg_per_policy[i]])
-				num_candidate_transitions = sum(ep_Ts)
-				if num_candidate_transitions != 0:
-					# self.subgoals_achieved = max(self.subgoals_achieved,self.fst_sg_per_policy[i])
-					self.policies_used = max(self.policies_used,i)
-					self.policies[i].store_episode(episode, ep_Ts)
+		# ep_Ts = [T]*rollout_batch_size
+		self.policies[0].store_episode(episode)#, ep_Ts)
+
+		# else:
+		# 	for i in range(self.num_policies):
+
+		# 		ep_Ts = []
+		# 		for j in range(rollout_batch_size):
+		# 			goal_indices = np.where(episode_batch['info_is_success'][j] == 1)[0]
+
+		# 			if self.fst_sg_per_policy[i] > len(goal_indices):
+		# 				ep_Ts.append(0)
+		# 				continue
+
+		# 			#specific to this bc only 3 subgoals total, make more modular
+		# 			if len(goal_indices) > 2:
+		# 				goal_indices = np.concatenate((goal_indices[:2],goal_indices[-1:]))
+
+		# 			else:
+		# 				goal_indices = np.concatenate((goal_indices,[T]))
+		# 			ep_Ts.append(goal_indices[self.fst_sg_per_policy[i]])
+		# 		num_candidate_transitions = sum(ep_Ts)
+		# 		if num_candidate_transitions != 0:
+		# 			# self.subgoals_achieved = max(self.subgoals_achieved,self.fst_sg_per_policy[i])
+		# 			self.policies_used = max(self.policies_used,i)
+		# 			self.policies[i].store_episode(episode, ep_Ts)
 
 	def train(self):
 		for i in range(self.num_policies):
@@ -92,19 +101,22 @@ class Policies:
 		return actions, None, None, None
 
 	# def get_actions(self, o, ag, g, g_ind, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):
-	def get_actions(self, o, ag, gs, g_inds, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):
-		#multi env case
-		if type(g_inds) is int:
-			policy_inds = np.array([self.pi_from_gi[g_inds]])
-		else:
-			policy_inds = np.array([self.pi_from_gi[g_ind] for g_ind in g_inds])
-		acts = []
-		for i in range(self.num_policies):
-			inds = np.where(policy_inds == i)
-			p_acts = self.policies[i].get_actions(o[inds], ag[inds], gs[inds],compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net)
-			acts = p_acts if i == 0 else acts+p_acts
+	# def get_actions(self, o, ag, gs, g_inds, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):
+	# 	#multi env case
+	# 	if type(g_inds) is int:
+	# 		policy_inds = np.array([self.pi_from_gi[g_inds]])
+	# 	else:
+	# 		policy_inds = np.array([self.pi_from_gi[g_ind] for g_ind in g_inds])
+	# 	acts = []
+	# 	for i in range(self.num_policies):
+	# 		inds = np.where(policy_inds == i)
+	# 		p_acts = self.policies[i].get_actions(o[inds], ag[inds], gs[inds],compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net)
+	# 		acts = p_acts if i == 0 else acts+p_acts
 
-		return acts
+	# 	return acts
+
+	def get_actions(self, o, ag, g, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):
+		return self.policies[0].get_actions(o,ag,g,compute_Q=compute_Q,noise_eps=noise_eps,random_eps=random_eps,use_target_net=use_target_net)
 
 	def save(self, save_path):
 		suffixes = ['p' + str(i) for i in range(self.num_policies)]

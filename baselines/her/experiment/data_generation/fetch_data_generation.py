@@ -10,7 +10,7 @@ infos = []
 NUMGOALS = 3
 
 def main():
-    env = gym.make('FetchPickAndPlace-v1', **{'num_goals' : 3, 'subgoal_rewards' : np.array([5.,5.,20.],dtype=np.float32), 'use_g_ind' : True})
+    env = gym.make('FetchPickAndPlace-v1', **{'num_goals' : 3, 'subgoal_rewards' : np.array([1.,1.,5.],dtype=np.float32), 'use_g_ind' : True})
     numItr = 1
     initStateSpace = "random"
     env.reset()
@@ -24,27 +24,28 @@ def main():
     fileName = "data_fetch"
     fileName += "_" + initStateSpace
     fileName += "_" + str(numItr)
-    fileName += "goalind_5_5_20_graspconst_newsetup.npz"#".npz"
+    fileName += "goalind_0_0_0_graspconst_4_10.npz"#".npz"
 
     np.savez_compressed(fileName, acs=actions, obs=observations, info=infos) # save the file
 
+# def goToGoal(env, lastObs):
+#     goal = lastObs['desired_goals'][NUMGOALS-1]
+#     # goal = lastObs['desired_goals'][2]
+#     objectPos = lastObs['observation'][3:6]
+#     object_rel_pos = lastObs['observation'][6:9]
+#     episodeAcs = []
+#     episodeObs = []
+#     episodeInfo = []
+#     # g_ind = 0
+
+#     object_oriented_goal = object_rel_pos.copy()
+#     object_oriented_goal[2] += 0.03 # first make the gripper go slightly above the object
+
+#     timeStep = 0 #count the total number of timesteps
+
 def goToGoal(env, lastObs):
-    goal = lastObs['desired_goals'][NUMGOALS-1]
-    # goal = lastObs['desired_goals'][2]
-    objectPos = lastObs['observation'][3:6]
-    object_rel_pos = lastObs['observation'][6:9]
-    episodeAcs = []
-    episodeObs = []
-    episodeInfo = []
-    # g_ind = 0
-
-    object_oriented_goal = object_rel_pos.copy()
-    object_oriented_goal[2] += 0.03 # first make the gripper go slightly above the object
-
-    timeStep = 0 #count the total number of timesteps
-
-def goToGoal(env, lastObs):
-    goal = lastObs['desired_goals'][NUMGOALS-1]
+    goal = env.goals[NUMGOALS-1]
+    # goal = lastObs['desired_goals'][NUMGOALS-1]
     # goal = lastObs['desired_goals'][2]
     objectPos = lastObs['observation'][3:6]
     object_rel_pos = lastObs['observation'][6:9]
