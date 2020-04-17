@@ -10,7 +10,7 @@ infos = []
 NUMGOALS = 3
 
 def main():
-    env = gym.make('FetchPickAndPlace-v1', **{'num_goals' : 3, 'subgoal_rewards' : np.array([5.,5.,0.],dtype=np.float32), 'use_g_ind' : True})
+    env = gym.make('FetchPickAndPlace-v1', **{'num_goals' : NUMGOALS, 'subgoal_rewards' : np.array([5.,5.,0.],dtype=np.float32), 'use_g_ind' : True})
     numItr = 100
     initStateSpace = "random"
     env.reset()
@@ -26,7 +26,7 @@ def main():
     fileName += "_" + str(numItr)
     fileName += "multiple_policy_5_5_0_modsg2.npz"#".npz"
 
-    # np.savez_compressed(fileName, acs=actions, obs=observations, info=infos) # save the file
+    np.savez_compressed(fileName, acs=actions, obs=observations, info=infos) # save the file
 
 def goToGoal(env, lastObs):
     goal = env.goals[NUMGOALS-1]
@@ -56,7 +56,8 @@ def goToGoal(env, lastObs):
         action[len(action)-1] = 0.05 #open
 
         obsDataNew, reward, done, info = env.step(action)#,g_ind)
-        # print(reward)
+        print(reward)
+        print(info)
         # if reward != -1 and g_ind < NUMGOALS-1:
         #     print(reward,g_ind)
         #     g_ind += 1
@@ -78,7 +79,8 @@ def goToGoal(env, lastObs):
         action[len(action)-1] = -0.005
 
         obsDataNew, reward, done, info = env.step(action)#,g_ind)
-        # print(reward)
+        print(reward)
+        print(info)
         # if reward != -1 and g_ind < NUMGOALS-1:
         #     print(reward,g_ind)
         #     g_ind += 1
@@ -101,7 +103,8 @@ def goToGoal(env, lastObs):
         action[len(action)-1] = -0.005
 
         obsDataNew, reward, done, info = env.step(action)#,g_ind)
-        # print(reward)
+        print(reward)
+        print(info)
         # if reward != -1 and g_ind < NUMGOALS-1:
         #     print(reward,g_ind)
         #     g_ind += 1       
@@ -120,7 +123,8 @@ def goToGoal(env, lastObs):
         action[len(action)-1] = -0.005 # keep the gripper closed
 
         obsDataNew, reward, done, info = env.step(action)#,g_ind)
-        # print(reward)
+        print(reward)
+        print(info)
         # if reward != -1 and g_ind < NUMGOALS-1:
             # print(reward,g_ind)
             # g_ind += 1        
