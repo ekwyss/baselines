@@ -110,7 +110,7 @@ def build_env(args):
         get_session(config=config)
 
         flatten_dict_observations = alg not in {'her'}
-        env = make_vec_env(env_id, env_type, args.num_env or 1, seed, reward_scale=args.reward_scale, flatten_dict_observations=flatten_dict_observations, env_kwargs = {'num_goals' : 3, 'subgoal_rewards' : np.array([5.,5.,20.]), 'use_g_ind' : True})
+        env = make_vec_env(env_id, env_type, args.num_env or 1, seed, reward_scale=args.reward_scale, flatten_dict_observations=flatten_dict_observations, env_kwargs = {'num_goals' : 3, 'subgoal_rewards' : np.array([5.,5.,0.]), 'use_g_ind' : True})
 
         if env_type == 'mujoco':
             env = VecNormalize(env, use_tf=True)
@@ -227,17 +227,19 @@ def main(args):
         dones = np.zeros((1,))
 
         episode_rew = np.zeros(env.num_envs) if isinstance(env, VecEnv) else np.zeros(1)
-        goal_ind = [0]
-        num_goals = model.num_goals
+        goal_ind = np.zeros(env.num_envs, dtype=int)
+        # num_goals = model.num_goals
         while True:
             if state is not None:
                 actions, _, state, _ = model.step(obs, goal_ind, S=state, M=dones)
             else:
                 actions, _, _, _ = model.step(obs, goal_ind)
             
-            obs, rew, done, _ = env.step(actions)
+            obs, rew, done, info = env.step(actions)
 
-            goal_ind = info[0]['goal_index']
+            # print(info['goal_index'])
+            for i in range(env.num_envs):
+                goal_ind[i] = info[i]['goal_index']
             # if rew != -1 and goal_ind < num_goals-1:
                 # goal_ind += 1
             episode_rew += rew
@@ -247,7 +249,7 @@ def main(args):
                 for i in np.nonzero(done)[0]:
                     print('episode_rew={}'.format(episode_rew[i]))
                     episode_rew[i] = 0
-                    goal_ind = [0]
+                    goal_ind[i] = 0
 
     env.close()
 

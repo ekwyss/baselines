@@ -10,7 +10,7 @@ infos = []
 NUMGOALS = 3
 
 def main():
-    env = gym.make('FetchPickAndPlace-v1')
+    env = gym.make('FetchPickAndPlace-v1', **{'num_goals' : 3, 'subgoal_rewards' : np.array([5.,5.,0.],dtype=np.float32), 'use_g_ind' : True})
     numItr = 100
     initStateSpace = "random"
     env.reset()
@@ -24,13 +24,12 @@ def main():
     fileName = "data_fetch"
     fileName += "_" + initStateSpace
     fileName += "_" + str(numItr)
-    fileName += "goalind_5_5_20.npz"#".npz"
+    fileName += "multiple_policy_5_5_0_modsg2.npz"#".npz"
 
-    np.savez_compressed(fileName, acs=actions, obs=observations, info=infos) # save the file
+    # np.savez_compressed(fileName, acs=actions, obs=observations, info=infos) # save the file
 
 def goToGoal(env, lastObs):
-
-    goal = lastObs['desired_goals'][NUMGOALS-1]
+    goal = env.goals[NUMGOALS-1]
     # goal = lastObs['desired_goals'][2]
     objectPos = lastObs['observation'][3:6]
     object_rel_pos = lastObs['observation'][6:9]

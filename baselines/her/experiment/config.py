@@ -3,7 +3,8 @@ import numpy as np
 import gym
 
 from baselines import logger
-from baselines.her.ddpg import DDPG
+# from baselines.her.ddpg import DDPG
+from baselines.her.policies import Policies
 from baselines.her.her_sampler import make_sample_her_transitions
 from baselines.bench.monitor import Monitor
 
@@ -27,6 +28,7 @@ DEFAULT_PARAMS = {
     'polyak': 0.95,  # polyak averaging coefficient
     'action_l2': 1.0,  # quadratic penalty on actions (before rescaling by max_u)
     'clip_obs': 200.,
+    # 'scopes': ['ddpg0'],  # can be tweaked for testing
     'scope': 'ddpg',  # can be tweaked for testing
     'relative_goals': False,
     # training
@@ -76,7 +78,7 @@ def prepare_params(kwargs):
     env_name = kwargs['env_name']
 
     def make_env(subrank=None):
-        env_kwargs = {'num_goals' : 3, 'subgoal_rewards' : np.array([5.,5.,20.]), 'use_g_ind' : True}
+        env_kwargs = {'num_goals' : 3, 'subgoal_rewards' : np.array([5.,5.,0.]), 'use_g_ind' : True}
         env = gym.make(env_name, **env_kwargs)
         if subrank is not None and logger.get_dir() is not None:
             try:
@@ -124,6 +126,33 @@ def log_params(params, logger=logger):
     for key in sorted(params.keys()):
         logger.info('{}: {}'.format(key, params[key]))
 
+# def configure_hers(num_policies,params):
+#     env = cached_make_env(params['make_env'])
+#     env.reset()
+#     # goal_indexes = params['goal_indexes']
+#     # policy_index = params['policy_index']
+
+#     #can add policy index here for subgoal rewards****
+#     def reward_fun(ag_2, g, info):  # vectorized
+#         return env.compute_reward(achieved_goal=ag_2, desired_goal=g, info=info)
+
+#     # Prepare configuration for HER.
+#     her_params = {
+#         'reward_fun': reward_fun,
+#         # 'policy_indexes': goal_indexes,
+#         # 'policy_index': i,
+#     }
+#     for name in ['replay_strategy', 'replay_k']:
+#         her_params[name] = params[name]
+#         params['_' + name] = her_params[name]
+#         del params[name]
+#     sample_her_transitions = make_sample_her_transitions(**her_params)
+#     # sample_her_transitions = []
+#     # for i in range(num_policies):
+#     #     her_params['policy_index'] = i
+#     #     sample_her_transitions.append(make_sample_her_transitions(**her_params))
+
+#     return sample_her_transitions
 
 def configure_her(params):
     env = cached_make_env(params['make_env'])
@@ -139,7 +168,7 @@ def configure_her(params):
     her_params = {
         'reward_fun': reward_fun,
         # 'policy_indexes': goal_indexes,
-        # 'policy_index': policy_index,
+        # 'policy_index': params['policy_index'],
     }
     for name in ['replay_strategy', 'replay_k']:
         her_params[name] = params[name]
@@ -155,7 +184,8 @@ def simple_goal_subtract(a, b):
     return a - b
 
 
-def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True):
+def configure_ddpgs(num_policies,num_goals,dims, params, reuse=False, use_mpi=True, clip_return=True):
+    # sample_her_transitions = configure_hers(num_policies,params)
     sample_her_transitions = configure_her(params)
     # Extract relevant parameters.
     gamma = params['gamma']
@@ -181,12 +211,51 @@ def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True):
                         'demo_batch_size': params['demo_batch_size'],
                         'prm_loss_weight': params['prm_loss_weight'],
                         'aux_loss_weight': params['aux_loss_weight'],
+                        # 'scopes': ["ddpg" + str(i) for i in range(num_policies)]
                         })
     ddpg_params['info'] = {
         'env_name': params['env_name'],
     }
-    policy = DDPG(reuse=reuse, **ddpg_params, use_mpi=use_mpi)
-    return policy
+    # print(ddpg_params)
+    # quit()
+    # for i in range(num_policies):
+        # ddpg_params['sample_transitions'] = sample_her_transitions[i]
+        # ddpg_params['scopes'] = ["ddpg" + str(i)
+    policies = Policies(num_policies, ddpg_params, num_goals, reuse=reuse, use_mpi=use_mpi)
+    return policies
+
+# def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True):
+#     sample_her_transitions = configure_her(params)
+#     # Extract relevant parameters.
+#     gamma = params['gamma']
+#     rollout_batch_size = params['rollout_batch_size']
+#     ddpg_params = params['ddpg_params']
+
+#     input_dims = dims.copy()
+
+#     # DDPG agent
+#     env = cached_make_env(params['make_env'])
+#     env.reset()
+#     ddpg_params.update({'input_dims': input_dims,  # agent takes an input observations
+#                         'T': params['T'],
+#                         'clip_pos_returns': True,  # clip positive returns
+#                         'clip_return': (1. / (1. - gamma)) if clip_return else np.inf,  # max abs of return
+#                         'rollout_batch_size': rollout_batch_size,
+#                         'subtract_goals': simple_goal_subtract,
+#                         'sample_transitions': sample_her_transitions,
+#                         'gamma': gamma,
+#                         'bc_loss': params['bc_loss'],
+#                         'q_filter': params['q_filter'],
+#                         'num_demo': params['num_demo'],
+#                         'demo_batch_size': params['demo_batch_size'],
+#                         'prm_loss_weight': params['prm_loss_weight'],
+#                         'aux_loss_weight': params['aux_loss_weight'],
+#                         })
+#     ddpg_params['info'] = {
+#         'env_name': params['env_name'],
+#     }
+#     policy = DDPG(reuse=reuse, **ddpg_params, use_mpi=use_mpi)
+#     return policy
 
 
 def configure_dims(params):

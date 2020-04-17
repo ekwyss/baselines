@@ -34,7 +34,7 @@ class ReplayBuffer:
         with self.lock:
             return self.current_size == self.size
 
-    def sample(self, batch_size):
+    def sample(self, batch_size, policy_index):# ts, policy_index):
         """Returns a dict {key: array(batch_size x shapes[key])}
         """
         buffers = {}
@@ -47,7 +47,20 @@ class ReplayBuffer:
         buffers['o_2'] = buffers['o'][:, 1:, :]
         buffers['ag_2'] = buffers['ag'][:, 1:, :]
 
-        transitions = self.sample_transitions(buffers, batch_size, [buffers['u'].shape[1]]*buffers['u'].shape[0])
+        ts = np.where(buffers['info_goal_index'] == policy_index)
+        ts = [ts[1][np.nonzero(ts[0] == j)[0]] for j in range(buffers['u'].shape[0])]
+        ep_Ts = np.array([len(t) for t in ts])
+        cand_eps = np.where(ep_Ts > 1)[0]
+        #If no cand_eps then no need to sample
+        if len(cand_eps) == 0:
+            # print("no cand eps")
+            return None
+        num_sg_ts = np.sum(ep_Ts)
+        sg_batch_size = (num_sg_ts / (self.current_size * (self.T-1)) * batch_size).astype(int)
+
+        # print("REPLAY SAMPLE CALLED")
+        transitions = self.sample_transitions(buffers, sg_batch_size, ts, cand_eps)#, [buffers['u'].shape[1]]*buffers['u'].shape[0])
+        # print("REPLAY SAMPLE OUT")
 
         for key in (['r', 'o_2', 'ag_2'] + list(self.buffers.keys())):
             assert key in transitions, "key %s missing from transitions" % key
@@ -58,7 +71,6 @@ class ReplayBuffer:
         """episode_batch: array(batch_size x (T or T+1) x dim_key)
         """
         batch_sizes = [len(episode_batch[key]) for key in episode_batch.keys()]
-        # print(batch_sizes)
         assert np.all(np.array(batch_sizes) == batch_sizes[0])
         batch_size = batch_sizes[0]
 

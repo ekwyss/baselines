@@ -47,7 +47,7 @@ class RolloutWorker:
         self.initial_ag = self.obs_dict['achieved_goal']
         self.g = self.obs_dict['desired_goal']
         #remove extra layer of array
-        self.gs = self.obs_dict['desired_goals']#[0]
+        # self.gs = self.obs_dict['desired_goals']#[0]
         # self.g_index = 0
         # self.subgoal_timesteps = [[0],[0],[0]]
         # self.g = self.gs[self.g_index].copy()
@@ -102,7 +102,7 @@ class RolloutWorker:
             # [g[i][g_inds[i]] for i in range(len(g_inds))]
             # sgs = np.array([a[b] for a,b in zip(self.gs,g_indices)])
 
-            self.g = np.array([a[b] for a,b in zip(self.gs,g_indices)]) 
+            # self.g = np.array([a[b] for a,b in zip(self.gs,g_indices)]) 
             # print(self.gs)
             # print(g_indices)
             # print(self.g)
@@ -140,13 +140,14 @@ class RolloutWorker:
             o_new = obs_dict_new['observation']
             ag_new = obs_dict_new['achieved_goal']
             success = np.array([i.get('is_success', 0.0) for i in info])
-
+            self.g = obs_dict_new['desired_goal']
+            g_indices = [i['goal_index'] for i in info]
             # self.g_index = g_index_new
 
             #update goal/goal_index if we achieve a subgoal
-            for i in np.where(rewards != -1)[0]:
-                # print(i)
-                g_indices[i] = min(g_indices[i]+1,self.policies.num_goals-1)
+            # for i in np.where(rewards != -1)[0]:
+            #     # print(i)
+            #     g_indices[i] = min(g_indices[i]+1,self.policies.num_goals-1)
                 # print("?")
                 # self.g = [self.gs[:,g_indices]]
 

@@ -90,7 +90,7 @@ def train(*, policies, rollout_worker, evaluator,
 
             # split up episodes into subsegments
             # policies.store_episodes(new_episodes)
-            policies.store_episodes(episode)
+            policies.store_episode(episode)
             # policy.store_episode(episode)
             for _ in range(n_batches):
                 policies.train()
@@ -156,8 +156,10 @@ def learn(*, network, env, total_timesteps,
 
     override_params = override_params or {}
     if MPI is not None:
+        print("MPI")
         rank = MPI.COMM_WORLD.Get_rank()
         num_cpu = MPI.COMM_WORLD.Get_size()
+    print(num_cpu)
 
     # Seed everything.
     rank_seed = seed + 1000000 * rank if seed is not None else None
@@ -199,7 +201,8 @@ def learn(*, network, env, total_timesteps,
     # print(params.keys())
     dims = config.configure_dims(params)
     # policy = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return)
-    policies = Policies(3,dims,params,clip_return, num_goals=3)
+    # policies = Policies(3,dims,params,clip_return, num_goals=3)
+    policies = config.configure_ddpgs(num_policies=3,num_goals=3,dims=dims,params=params,clip_return=clip_return)
     # policies = Policies(2,dims,params,clip_return,3,[0,2])
     # policies = Policies(3,dims,params,clip_return)
     #same obs and action space, hack

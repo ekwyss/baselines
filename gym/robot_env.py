@@ -39,12 +39,13 @@ class RobotEnv(gym.GoalEnv):
         self.goals = self._sample_goals()
         self.goal_index = 0
         self.goal = self.goals[self.goal_index]
-        self.goal_reached = False
+        # self.goal_reached = False
+        self.goals_reached = 0
         obs = self._get_obs()
         self.action_space = spaces.Box(-1., 1., shape=(n_actions,), dtype='float32')
         self.observation_space = spaces.Dict(dict(
             desired_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
-            desired_goals=spaces.Box(-np.inf, np.inf, shape=obs['desired_goals'].shape, dtype='float32'),
+            # desired_goals=spaces.Box(-np.inf, np.inf, shape=obs['desired_goals'].shape, dtype='float32'),
             achieved_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
             observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
         ))
@@ -67,31 +68,53 @@ class RobotEnv(gym.GoalEnv):
         self.sim.step()
         self._step_callback()
         obs = self._get_obs()
-
+        
         done = False
-        info = {
-            'is_success': self._is_success(obs['achieved_goal'], goal,self.goal_index), #orig
-            # 'goal_index': self.goal_index,
-            # 'goal_reached': self.goal_reached
-            # 'consistent_subgoals': [self._is_success(obs['achieved_goal'],goal) for goal in self.goals]
-            #first two are if hand is close and last is if object is close
-            # 'consistent_subgoals': [self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[0]), self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[1]), self._is_success(self.sim.data.get_site_xpos('object0'),self.goals[2])]
-            # 'consistent_subgoals': [self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[0])]
-            # 'consistent_subgoals': [self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[i]) for i in range(self.num_goals)]
-        }
+
+        info = dict()
+
         if self.use_g_ind == True:
             info['goal_index'] = self.goal_index
-            info['goal_reached'] = self.goal_reached
-            info['gripper_width'] = self.sim.data.get_joint_qpos('robot0:l_gripper_finger_joint') + self.sim.data.get_joint_qpos('robot0:r_gripper_finger_joint')
-        reward = self.compute_reward(obs['achieved_goal'], goal, info)#self.goal
-        #give subgoal reward instead if achieving subgoals
-        if reward != -1 and not self.goal_reached:# and self.goal_index < len(self.goals)-1: #second part was commented out
-            # reward = self.subgoal_rewards[self.goal_index]
-            if self.goal_index == self.num_goals-1:
-                self.goal_reached = True
-            if self.goal_index < self.num_goals-1:
-                self.goal_index += 1
-                self.goal = self.goals[self.goal_index]
+            info['goals_reached'] = self.goals_reached
+            # info['goal_reached'] = self.goal_reached
+            # info['gripper_width'] = self.sim.data.get_joint_qpos('robot0:l_gripper_finger_joint') + self.sim.data.get_joint_qpos('robot0:r_gripper_finger_joint')
+            info['gripper_state'] = [self.sim.data.get_joint_qpos('robot0:l_gripper_finger_joint'), self.sim.data.get_joint_qpos('robot0:r_gripper_finger_joint')]
+        
+        # NEW: Check what subgoal you are currently on from state of environment, regardless of last goal index
+        is_success, reward = self._update_goal_status(obs)
+
+        info['is_success'] = is_success
+
+        # REPLACING WITH _UPADTE_GOAL_STATUS to handle goal_index,goal,goals_reached, and reward
+        # info = {
+        #     'is_success': self._is_success(obs['achieved_goal'], goal,self.goal_index), #orig
+        #     # 'goal_index': self.goal_index,
+        #     # 'goal_reached': self.goal_reached
+        #     # 'consistent_subgoals': [self._is_success(obs['achieved_goal'],goal) for goal in self.goals]
+        #     #first two are if hand is close and last is if object is close
+        #     # 'consistent_subgoals': [self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[0]), self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[1]), self._is_success(self.sim.data.get_site_xpos('object0'),self.goals[2])]
+        #     # 'consistent_subgoals': [self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[0])]
+        #     # 'consistent_subgoals': [self._is_success(self.sim.data.get_site_xpos('robot0:grip'),self.goals[i]) for i in range(self.num_goals)]
+        # }
+
+        # if self.use_g_ind == True:
+        #     info['goal_index'] = self.goal_index
+        #     info['goal_reached'] = self.goal_reached
+        #     info['gripper_width'] = self.sim.data.get_joint_qpos('robot0:l_gripper_finger_joint') + self.sim.data.get_joint_qpos('robot0:r_gripper_finger_joint')
+        
+        # reward = self.compute_reward(obs['achieved_goal'], goal, info)#self.goal
+
+        # #update goal index if reached subgoal
+        # # if info['is_success'] == 1 and not self.goal_reached:
+        # if reward != -1 and not self.goal_reached:# and self.goal_index < len(self.goals)-1: #second part was commented out
+        #     # reward = self.subgoal_rewards[self.goal_index]
+        #     if self.goal_index == self.num_goals-1:
+        #         self.goal_reached = True
+        #     if self.goal_index < self.num_goals-1:
+        #         self.goal_index += 1
+        #         self.goal = self.goals[self.goal_index]
+
+
         # info['goal_index'] = self.goal_index
         return obs, reward, done, info
 
@@ -108,7 +131,8 @@ class RobotEnv(gym.GoalEnv):
         self.goals = self._sample_goals()
         self.goal_index = 0
         self.goal = self.goals[self.goal_index]
-        self.goal_reached = False
+        self.goals_reached = 0
+        # self.goal_reached = False
         obs = self._get_obs()
         return obs
 
@@ -175,6 +199,12 @@ class RobotEnv(gym.GoalEnv):
 
     # def _sample_goal(self):
     #     """Samples a new goal and returns it.
+    #     """
+    #     raise NotImplementedError()
+
+    # def _update_goal_state():
+    #     """Updates goal_index and goal_reached based on state of the environment.
+    #     This way we can jump forwards or backwards goals to act dynamically instead of just sequentially.
     #     """
     #     raise NotImplementedError()
 
