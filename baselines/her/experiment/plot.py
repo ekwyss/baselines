@@ -157,7 +157,14 @@ for filedir1 in args.filedirs1:
             # if len(data1['FetchPickAndPlace-v1']['her-sparse'][0][0]) >= 40:
             success_rates1.append(data1['FetchPickAndPlace-v1']['her-sparse'][0][1])
             # print(filedir, data1)
-    data1['FetchPickAndPlace-v1']['her-sparse'][0] = (data1['FetchPickAndPlace-v1']['her-sparse'][0][0], np.mean(success_rates1, axis=0))
+    # if i == 0:
+    #     sr_diff = []
+    #     for i in range(len(success_rates1[0]) - len(success_rates1[1])):
+    #         sr_diff.append(success_rates1[0][i+len(success_rates1[1])])
+    #     success_rates1[1] = np.concatenate((success_rates1[1],np.array(sr_diff)))
+    # i+=1
+    data1['FetchPickAndPlace-v1']['her-sparse'][0] = (np.arange(1,args.num_epochs+1), np.mean(success_rates1, axis=0))
+    # data1['FetchPickAndPlace-v1']['her-sparse'][0] = (data1['FetchPickAndPlace-v1']['her-sparse'][0][0], np.mean(success_rates1, axis=0))
     datas.append(data1)
     labels.append([filedir1.split("/")[-2]])
     # labels.append([filedir1.split("/")[-3] + "/" + filedir1.split("/")[-2]])
@@ -207,6 +214,7 @@ for env_id in sorted(data1.keys()):
             xs, ys = pad(xs), pad(ys)
             print(xs.shape)
             print(ys.shape)
+            print(ys)
             assert xs.shape == ys.shape
             xnew = []
             ynew = []
