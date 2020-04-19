@@ -39,7 +39,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.target_offset = target_offset
         self.obj_range = obj_range
         self.target_range = target_range
-        self.distance_threshold = distance_threshold#*0.8
+        # self.distance_threshold = distance_threshold #.05
         # self.distance_thresholds = [distance_threshold,distance_threshold*0.3,distance_threshold] #*0.8
         self.reward_type = reward_type
         self.num_goals = num_goals
@@ -91,12 +91,40 @@ class FetchEnv(robot_env.RobotEnv):
         #     return 1
         # return 0
 
+    # ----------------------------MODSGATT2-----------------------------
+    # #ag is gripper pos
+    # #g is obj pos + [0,0,.025]
+    # def achieved_sg0(self, achieved_goal, goal, gripper_state):
+    #     # print(achieved_goal[2] - goal[2])
+    #     return goal_distance(achieved_goal,goal) < 0.04 and achieved_goal[2] - goal[2] > 0.0
+    #     # return np.linalg.norm(achieved_goal[:2] - goal[:2], axis=-1) < 0.02 and -0.1 < achieved_goal[2] - goal[2] < 0.015#0.075
+
+    # #ag is gripper pos
+    # #g is obj pos - [0,0,.025]
+    # def achieved_sg1(self, achieved_goal, goal, gripper_state):
+    #     # print(goal_distance(achieved_goal,goal), self.distance_threshold*.3, gripper_state)
+    #     # return goal_distance(achieved_goal,goal) < self.distance_threshold
+    #     # object_pos = goal + [0,0,0.025]
+    #     # return achieved_goal[1] + gripper_state[0] > object_pos[1] + 0.015 and achieved_goal[1] - gripper_state[1] < object_pos[1] - 0.015 and sum(gripper_state) < 0.052 and achieved_goal[2] - object_pos[2] < .025 and -0.015 < achieved_goal[0] - goal[0] < 0.015
+    #     # return goal_distance(achieved_goal,goal) < self.distance_threshold*.3 and gripper_state > 0.052
+    #     # print(achieved_goal[2] - goal[2])
+    #     return goal_distance(achieved_goal,goal) < 0.015 and gripper_state > 0.052 and achieved_goal[2] - goal[2] > 0.005 and -0.015 < achieved_goal[0] - goal[0] < 0.015
+    #     # return achieved_sg1(achieved_goal,goal) and achieved_goal[2] - goal[2] < 0.025# and gripper_width < 0.052
+
+    # #if using this have to make sure subgoal sampling is implemented, or else will say sg3 is achieved when it really isnt
+    # def achieved_sg2(self,achieved_goal,goal, gripper_state):
+    #     return goal_distance(achieved_goal,goal) < 0.05
+
+    #AND sg2 changed to 0.04
+    # ----------------------------
+
+
     #ag is gripper pos
     #g is obj pos + [0,0,.025]
     def achieved_sg0(self, achieved_goal, goal, gripper_state):
-        # return goal_distance(achieved_goal,goal) < self.distance_threshold
+        # print(achieved_goal[2] - goal[2])
+        # return goal_distance(achieved_goal,goal) < 0.04 and achieved_goal[2] - goal[2] > 0.0
         return np.linalg.norm(achieved_goal[:2] - goal[:2], axis=-1) < 0.02 and -0.1 < achieved_goal[2] - goal[2] < 0.015#0.075
-        # return np.linalg.norm(achieved_goal[:2] - goal[:2], axis=-1) < 0.075 and achieved_goal[2] - goal[2] < 0.05#0.075
 
     #ag is gripper pos
     #g is obj pos - [0,0,.025]
@@ -105,23 +133,27 @@ class FetchEnv(robot_env.RobotEnv):
         # return goal_distance(achieved_goal,goal) < self.distance_threshold
         # object_pos = goal + [0,0,0.025]
         # return achieved_goal[1] + gripper_state[0] > object_pos[1] + 0.015 and achieved_goal[1] - gripper_state[1] < object_pos[1] - 0.015 and sum(gripper_state) < 0.052 and achieved_goal[2] - object_pos[2] < .025 and -0.015 < achieved_goal[0] - goal[0] < 0.015
-        return goal_distance(achieved_goal,goal) < self.distance_threshold*.3 and gripper_state > 0.052
+        # return goal_distance(achieved_goal,goal) < self.distance_threshold*.3 and gripper_state > 0.052
+        # print(achieved_goal[2] - goal[2])
+        return goal_distance(achieved_goal,goal) < 0.015 and gripper_state > 0.052# and achieved_goal[2] - goal[2] > 0.005
         # return achieved_sg1(achieved_goal,goal) and achieved_goal[2] - goal[2] < 0.025# and gripper_width < 0.052
 
     #if using this have to make sure subgoal sampling is implemented, or else will say sg3 is achieved when it really isnt
     def achieved_sg2(self,achieved_goal,goal, gripper_state):
-        return goal_distance(achieved_goal,goal) < self.distance_threshold
+        return goal_distance(achieved_goal,goal) < 0.05
 
     #only used for ER now (if planning by sg)
     def compute_reward(self, achieved_goal, goal, info):
         if np.isscalar(info['is_success']):
-            success = getattr(self, 'achieved_sg{}'.format(int(info['goal_index'])))(achieved_goal,goal, info['gripper_width'])
+            # success = getattr(self, 'achieved_sg{}'.format(int(info['goal_index'])))(achieved_goal,goal, info['gripper_width'])
             #if last sg reward is 0 anyway doesn't matter if goal reached or not
-            return -1.0 if success == False  else self.subgoal_rewards[info['goal_index']]
+            # return -1.0 if success == False  else self.subgoal_rewards[info['goal_index']]
+            return -1.0 if info['is_success'] == 0  else self.subgoal_rewards[info['goal_index']]
         else:
             rews = np.zeros(len(achieved_goal), dtype=np.float32)
             for i in range(len(rews)):
                 success = getattr(self, 'achieved_sg{}'.format(int(info['goal_index'][i][0])))(achieved_goal[i],goal[i], info['gripper_width'][i])
+                # rews[i] = -0.0 if success else self.subgoal_rewards[int(info['goal_index'][i][0])]
                 rews[i] = -0.0 if success else -1.0
             # print(rews)
             return rews
@@ -322,7 +354,7 @@ class FetchEnv(robot_env.RobotEnv):
             #preset subgoals
             if self.num_goals > 1:
                 subgoal1 = object_pos.copy()
-                height_off = 0.01 if self.num_goals == 2 else 0.025 
+                height_off = 0.01 if self.num_goals == 2 else 0.025#0.04
                 subgoal1[2] += height_off
                 goals.append(subgoal1)
             #TODO: incorporate clasp object for goal 2

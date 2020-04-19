@@ -18,6 +18,7 @@ class ReplayBuffer:
         self.size = size_in_transitions // T
         self.T = T
         self.sample_transitions = sample_transitions
+        # self.sg_batch_sizes = np.zeros(3)
 
         # self.buffers is {key: array(size_in_episodes x T or T+1 x dim_key)}
         self.buffers = {key: np.empty([self.size, *shape])
@@ -73,6 +74,25 @@ class ReplayBuffer:
         batch_sizes = [len(episode_batch[key]) for key in episode_batch.keys()]
         assert np.all(np.array(batch_sizes) == batch_sizes[0])
         batch_size = batch_sizes[0]
+
+        #Make it so we sample from each subgoal proportionate to the amount of timesteps spent on each subgoal in last episode batch
+        # Account for 1 len episodes? - or caught/catch above anyway
+        # self.sg_batch_sizes = [sum(len(np.where(episode_batch['info_goal_index'] == i))) for i in range(3)]
+        
+
+        #change to num_policies
+        # for i in range(len(self.sg_batch_sizes)):
+        #     ts = np.where(episode_batch['info_goal_index'] == i)
+        #     # ts = [ts[1][np.nonzero(ts[0] == j)[0]] for j in range(buffers['u'].shape[0])]
+        #     ep_Ts = np.array([len(t) for t in ts])
+        #     cand_eps = np.where(ep_Ts > 1)[0]
+        #     #If no cand_eps then no need to sample
+        #     if len(cand_eps) == 0:
+        #         self.sg_batch_sizes[i] = 0
+        #     else:
+        #         num_sg_ts = np.sum(ep_Ts)
+        #         self.sg_batch_sizes[i] = (num_sg_ts / (self.current_size * (self.T-1)) * batch_size).astype(int)
+
 
         with self.lock:
             idxs = self._get_storage_idx(batch_size)
