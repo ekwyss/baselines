@@ -276,6 +276,7 @@ class Policies:
                     transitions = self.buffer.sample(self.batch_size, i)
                     if transitions is None:
                         continue
+                    self.policies[i].train(transitions)
                     # transitions = self.buffer.sample(sg_batch_sizes[i], i)
         else:
             for i in range(self.num_policies):
