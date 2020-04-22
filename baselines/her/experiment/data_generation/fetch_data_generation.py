@@ -10,7 +10,7 @@ infos = []
 NUMGOALS = 3
 
 def main():
-    env = gym.make('FetchPickAndPlace-v1', **{'num_goals' : 3, 'subgoal_rewards' : np.array([10.,10.,0.],dtype=np.float32), 'use_g_ind' : True})
+    env = gym.make('FetchPickAndPlace-v1', **{'num_goals' : 3, 'subgoal_rewards' : np.array([0.,0.,0.],dtype=np.float32), 'use_g_ind' : True})
     numItr = 100
     initStateSpace = "random"
     env.reset()
@@ -24,7 +24,7 @@ def main():
     fileName = "data_fetch"
     fileName += "_" + initStateSpace
     fileName += "_" + str(numItr)
-    fileName += "goalind_10_10_0.npz"#".npz"
+    fileName += "goalind_samesg_neg10rew.npz"#".npz"
 
     np.savez_compressed(fileName, acs=actions, obs=observations, info=infos) # save the file
 

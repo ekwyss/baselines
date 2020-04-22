@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 
-import time
+import random
 
 def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):#, policy_index):
     """Creates a sample function that can be used for HER experience replay.
@@ -27,7 +27,6 @@ def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):#, policy
         batch_size = batch_size_in_transitions
         
         #Matrix holding timesteps of transitions attempting to achieve each subgoal within each episode
-        start = time.time()
         Ts_IJ = []
         for i in range(rollout_batch_size):
             Ts_i = []
@@ -175,6 +174,10 @@ def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):#, policy
                        for k in transitions.keys()}
 
         assert(transitions['u'].shape[0] == batch_size_in_transitions)
+
+        randinds = list(range(transitions['u'].shape[0]))
+        random.shuffle(randinds)
+        transitions = {k: np.array([transitions[k][i] for i in randinds]) for k in transitions.keys()}
 
         return transitions
 
