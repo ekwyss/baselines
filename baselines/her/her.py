@@ -13,7 +13,6 @@ from baselines.her.rollout import RolloutWorker
 
 from baselines.her.policies import Policies
 import pickle
-import time
 
 
 def mpi_average(value):
@@ -78,13 +77,10 @@ def train(*, policies, rollout_worker, evaluator,
 
     # num_timesteps = n_epochs * n_cycles * rollout_length * number of rollout workers
     for epoch in range(n_epochs):
-        start = time.time()
         # train
         rollout_worker.clear_history()
         for _ in range(n_cycles):
-            start1 = time.time()
             episode = rollout_worker.generate_rollouts()
-            print("gen_rollouts",time.time() - start1)
             # new_episodes = split_episode(episode)
 
             #ATTEMPTING TO ONLY UPDATE POLICIES USED IN EPISODE
@@ -95,27 +91,19 @@ def train(*, policies, rollout_worker, evaluator,
 
             # split up episodes into subsegments
             # policies.store_episodes(new_episodes)
-            start2 = time.time()
             policies.store_episode(episode)
-            print("store episode",time.time() - start2)
             # policy.store_episode(episode)
-            start3 = time.time()
             for _ in range(n_batches):
                 policies.train()
                 # policy.train()
-            print("all train",time.time() - start3)
 
-            start4 = time.time()
             policies.update_target_nets()
-            print("update nets",time.time() - start4)
             # policy.update_target_net()
 
         # test
-        start5 = time.time()
         evaluator.clear_history()
         for _ in range(n_test_rollouts):
             evaluator.generate_rollouts()
-        print("all evaluate",time.time() - start5)
 
         # record logs
         logger.record_tabular('epoch', epoch)
@@ -152,7 +140,6 @@ def train(*, policies, rollout_worker, evaluator,
         if rank != 0:
             assert local_uniform[0] != root_uniform[0]
 
-        print("epoch", epoch, time.time()-start)
 
     return policies
 
