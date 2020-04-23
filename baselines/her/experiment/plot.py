@@ -10,7 +10,7 @@ import argparse
 from matplotlib.font_manager import FontProperties
 
 fontP = FontProperties()
-fontP.set_size('small')
+fontP.set_size('medium')
 
 
 def smooth_reward_curve(x, y):
@@ -38,6 +38,8 @@ def load_results(file):
     result = {}
     for idx, key in enumerate(keys):
         result[key] = data[:, idx]
+    if len(result['epoch']) == 40:
+        result['epoch'] = result['epoch'] * 2.5
     return result
 
 
@@ -60,11 +62,13 @@ def pad(xs, value=np.nan):
 parser = argparse.ArgumentParser()
 # parser.add_argument('filedir1', type=str)
 parser.add_argument('-filedirs1', nargs='+', type=str)
+parser.add_argument('-labels', nargs='+', type=str)
 # parser.add_argument('filedir2', type=str)
 # parser.add_argument('-filedirs2', nargs='+', type=str)
 parser.add_argument('-num_epochs', type=int)
 # parser.add_argument('-num_epochs', type=int)
 parser.add_argument('-outfile', type=str)
+parser.add_argument('-title', type=str)
 args = parser.parse_args()
 # filedir1 = "/home/eric/baselines/policies/her500000Output"
 # filedir2 = "/home/eric/baselines/policies/150000"
@@ -147,7 +151,7 @@ def make_data(filedir):
 #     labels.append(args.filedir2.split("/")[-3] + "/" + args.filedir2.split("/")[-2])
 
 datas = []
-labels = []
+# labels = []
 for filedir1 in args.filedirs1:
     success_rates1 = []
     for filedir in os.listdir(filedir1):
@@ -158,18 +162,19 @@ for filedir1 in args.filedirs1:
             success_rates1.append(data1['FetchPickAndPlace-v1']['her-sparse'][0][1])
             # print(filedir, data1)
         print(filedir1)
-    if filedir1 == "/home/eric/baselines/policies/goalind/5_5_0_100demo_4_12_last/" or filedir1=="/home/eric/baselines/policies/multiple_policy/10_10_0_100demo_modsg/":
+    if filedir1=="/home/eric/baselines/policies/multiple_policy/10_10_0_100demo_modsg/":
         sr_diff = []
         for i in range(len(success_rates1[0]) - len(success_rates1[1])):
             sr_diff.append(success_rates1[0][i+len(success_rates1[1])])
         success_rates1[1] = np.concatenate((success_rates1[1],np.array(sr_diff)))
-    if filedir1 == "/home/eric/baselines/policies/multiple_policy/10_10_0_10demo_modsg/":
+        data1['FetchPickAndPlace-v1']['her-sparse'][0] = (np.arange(1,100+1), np.mean(success_rates1, axis=0))
+    elif filedir1 == "/home/eric/baselines/policies/multiple_policy/10_10_0_10demo_modsg/":
         data1['FetchPickAndPlace-v1']['her-sparse'][0] = (np.arange(1,83+1), np.mean(success_rates1, axis=0))
     else:
-        data1['FetchPickAndPlace-v1']['her-sparse'][0] = (np.arange(1,args.num_epochs+1), np.mean(success_rates1, axis=0))
-    # data1['FetchPickAndPlace-v1']['her-sparse'][0] = (data1['FetchPickAndPlace-v1']['her-sparse'][0][0], np.mean(success_rates1, axis=0))
+        # data1['FetchPickAndPlace-v1']['her-sparse'][0] = (np.arange(1,args.num_epochs+1), np.mean(success_rates1, axis=0))
+        data1['FetchPickAndPlace-v1']['her-sparse'][0] = (data1['FetchPickAndPlace-v1']['her-sparse'][0][0], np.mean(success_rates1, axis=0))
     datas.append(data1)
-    labels.append([filedir1.split("/")[-2]])
+    # labels.append([filedir1.split("/")[-2]])
     # labels.append([filedir1.split("/")[-3] + "/" + filedir1.split("/")[-2]])
 
 #If passed in all relevant folders on command line
@@ -211,7 +216,7 @@ for env_id in sorted(data1.keys()):
     print('exporting {}'.format(env_id))
     plt.clf()
 
-    for data,label in zip(datas,labels):
+    for data,label in zip(datas,args.labels):
         for config in sorted(data[env_id].keys()):
             xs, ys = zip(*data[env_id][config])
             xs, ys = pad(xs), pad(ys)
@@ -228,10 +233,10 @@ for env_id in sorted(data1.keys()):
 
             plt.plot(xs[0], np.nanmedian(ys, axis=0), label=label)
             plt.fill_between(xs[0], np.nanpercentile(ys, 25, axis=0), np.nanpercentile(ys, 75, axis=0), alpha=0.25)
-    plt.title(env_id)
-    plt.xlabel('Epoch')
-    plt.ylabel('Median Success Rate')
-    plt.ylim(0.0,1.0)
+    plt.title(args.title, fontsize=16)
+    plt.xlabel('Epoch', fontsize=16)
+    plt.ylabel('Median Success Rate', fontsize=16)
+    plt.ylim(-0.01,1.0)
     plt.legend(loc='lower right', prop=fontP)
     # plt.savefig(os.path.join('/home/eric/baselines/policies', 'fig_{}.png'.format(env_id)))
     # if args.filedir2 != "NA":

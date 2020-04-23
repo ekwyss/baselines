@@ -175,9 +175,9 @@ def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):#, policy
 
         assert(transitions['u'].shape[0] == batch_size_in_transitions)
 
-        randinds = list(range(transitions['u'].shape[0]))
-        random.shuffle(randinds)
-        transitions = {k: np.array([transitions[k][i] for i in randinds]) for k in transitions.keys()}
+        # randinds = list(range(transitions['u'].shape[0]))
+        # random.shuffle(randinds)
+        # transitions = {k: np.array([transitions[k][i] for i in randinds]) for k in transitions.keys()}
 
         return transitions
 
