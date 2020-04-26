@@ -39,7 +39,8 @@ class FetchEnv(robot_env.RobotEnv):
         self.target_offset = target_offset
         self.obj_range = obj_range
         self.target_range = target_range
-        self.distance_threshold = distance_threshold#*0.8
+        # self.distance_threshold = distance_threshold #.05
+        # self.distance_thresholds = [distance_threshold,distance_threshold*0.3,distance_threshold] #*0.8
         self.reward_type = reward_type
         self.num_goals = num_goals
         self.subgoal_rewards = subgoal_rewards
@@ -50,6 +51,35 @@ class FetchEnv(robot_env.RobotEnv):
             initial_qpos=initial_qpos)
 
     # GoalEnv methods
+    # def compute_reward(self, achieved_goal, goal, info):
+    #         # if self.reward_type == 'sparse':
+    #         if np.isscalar(info['is_success']):
+    #             return -1.0 if info['is_success'] == 0.0 else -0.0 if info['goal_reached'] == True else self.subgoal_rewards[int(info['goal_index'])].astype(np.float32)
+    #             # return -1.0 if info['is_success'] == 0.0 else -0.0
+    #             # if info['goal_reached'] == False:
+    #             #     rew = self.subgoal_rewards[int(info['goal_index'])].astype(np.float32)
+    #             # return rew
+    #         else:
+    #             d = goal_distance(achieved_goal, goal)
+    #             rews = np.zeros(len(info['is_success']), dtype=np.float32)
+    #             for i in range(len(rews)):
+    #                 if info['goal_index'][i] == 0 and sum(info['gripper_pos'][i]) < 0.52:
+    #                     rews[i] = -1.0
+    #                 # else:
+    #                 #SGREW IN EXPERIENCE REPLAY IF ORIGINALLY FIRST TIME REACHING GOAL IN EPISODE
+    #                 # rews[i] = -1.0 if info['is_success'][i] == 0.0 else -0.0 if info['goal_reached'][i] == True else self.subgoal_rewards[int(info['goal_index'][i])].astype(np.float32)
+    #                 #SGREW ALWAYS IN EXPERIENCE REPLAY
+    #                 # rews[i] = self.subgoal_rewards[int(info['goal_index'][i])].astype(np.float32) if info['is_success'][i] == 1 else -1.0
+    #                 #NO SGREW IN EXPERIENCE REPLAY
+    #                 rews[i] = -(d[i] > self.distance_threshold).astype(np.float32)
+    #             # return = -(d > self.distance_threshold).astype(np.float32)
+    #             # print(rews)
+    #             # return rews
+
+    #     # if self.use_g_ind == False:
+    #     #     return -(d > self.distance_threshold).astype(np.float32)
+
+
     # ----------------------------
         # height_off = gripper_pos[2] - object_pos[2]
         # horiz_off = np.linalg.norm(gripper_pos[:2] - object_pos[:2], axis=-1)
@@ -61,30 +91,75 @@ class FetchEnv(robot_env.RobotEnv):
         #     return 1
         # return 0
 
+    # ----------------------------MODSGATT2-----------------------------
+    # #ag is gripper pos
+    # #g is obj pos + [0,0,.025]
+    # def achieved_sg0(self, achieved_goal, goal, gripper_state):
+    #     # print(achieved_goal[2] - goal[2])
+    #     return goal_distance(achieved_goal,goal) < 0.04 and achieved_goal[2] - goal[2] > 0.0
+    #     # return np.linalg.norm(achieved_goal[:2] - goal[:2], axis=-1) < 0.02 and -0.1 < achieved_goal[2] - goal[2] < 0.015#0.075
+
+    # #ag is gripper pos
+    # #g is obj pos - [0,0,.025]
+    # def achieved_sg1(self, achieved_goal, goal, gripper_state):
+    #     # print(goal_distance(achieved_goal,goal), self.distance_threshold*.3, gripper_state)
+    #     # return goal_distance(achieved_goal,goal) < self.distance_threshold
+    #     # object_pos = goal + [0,0,0.025]
+    #     # return achieved_goal[1] + gripper_state[0] > object_pos[1] + 0.015 and achieved_goal[1] - gripper_state[1] < object_pos[1] - 0.015 and sum(gripper_state) < 0.052 and achieved_goal[2] - object_pos[2] < .025 and -0.015 < achieved_goal[0] - goal[0] < 0.015
+    #     # return goal_distance(achieved_goal,goal) < self.distance_threshold*.3 and gripper_state > 0.052
+    #     # print(achieved_goal[2] - goal[2])
+    #     return goal_distance(achieved_goal,goal) < 0.015 and gripper_state > 0.052 and achieved_goal[2] - goal[2] > 0.005 and -0.015 < achieved_goal[0] - goal[0] < 0.015
+    #     # return achieved_sg1(achieved_goal,goal) and achieved_goal[2] - goal[2] < 0.025# and gripper_width < 0.052
+
+    # #if using this have to make sure subgoal sampling is implemented, or else will say sg3 is achieved when it really isnt
+    # def achieved_sg2(self,achieved_goal,goal, gripper_state):
+    #     return goal_distance(achieved_goal,goal) < 0.05
+
+    #AND sg2 changed to 0.04
+    # ----------------------------
+
+
     #ag is gripper pos
     #g is obj pos + [0,0,.025]
     def achieved_sg0(self, achieved_goal, goal, gripper_state):
-        return np.linalg.norm(achieved_goal[:2] - goal[:2], axis=-1) < 0.075 and achieved_goal[2] - goal[2] < 0.05#0.075
+        # print(achieved_goal[2] - goal[2])
+        # return goal_distance(achieved_goal,goal) < 0.04 and achieved_goal[2] - goal[2] > 0.0
+        return np.linalg.norm(achieved_goal[:2] - goal[:2], axis=-1) < 0.02 and -0.1 < achieved_goal[2] - goal[2] < 0.015#0.075
 
     #ag is gripper pos
     #g is obj pos - [0,0,.025]
     def achieved_sg1(self, achieved_goal, goal, gripper_state):
-        object_pos = goal + [0,0,0.025]
-        return achieved_goal[1] + gripper_state[0] > object_pos[1] + 0.015 and achieved_goal[1] - gripper_state[1] < object_pos[1] - 0.015 and sum(gripper_state) < 0.052 and achieved_goal[2] - object_pos[2] < .02 and -0.01 < achieved_goal[0] - goal[0] < 0.01
+        # print(goal_distance(achieved_goal,goal), self.distance_threshold*.3, gripper_state)
+        # return goal_distance(achieved_goal,goal) < self.distance_threshold
+        # object_pos = goal + [0,0,0.025]
+        # return achieved_goal[1] + gripper_state[0] > object_pos[1] + 0.015 and achieved_goal[1] - gripper_state[1] < object_pos[1] - 0.015 and sum(gripper_state) < 0.052 and achieved_goal[2] - object_pos[2] < .025 and -0.015 < achieved_goal[0] - goal[0] < 0.015
+        # return goal_distance(achieved_goal,goal) < self.distance_threshold*.3 and gripper_state > 0.052
+        # print(achieved_goal[2] - goal[2])
+        return goal_distance(achieved_goal,goal) < 0.015 and gripper_state > 0.052# and achieved_goal[2] - goal[2] > 0.005
         # return achieved_sg1(achieved_goal,goal) and achieved_goal[2] - goal[2] < 0.025# and gripper_width < 0.052
 
     #if using this have to make sure subgoal sampling is implemented, or else will say sg3 is achieved when it really isnt
     def achieved_sg2(self,achieved_goal,goal, gripper_state):
-        return goal_distance(achieved_goal,goal) < self.distance_threshold
+        return goal_distance(achieved_goal,goal) < 0.05
 
-    #only used for ER now
+    #only used for ER now (if planning by sg)
     def compute_reward(self, achieved_goal, goal, info):
-        rews = np.zeros(len(achieved_goal), dtype=np.float32)
-        for i in range(len(rews)):
-            success = getattr(self, 'achieved_sg{}'.format(int(info['goal_index'][i][0])))(achieved_goal[i],goal[i], info['gripper_state'][i])
-            rews[i] = -0.0 if success else -1.0
-        # print(rews)
-        return rews
+        if np.isscalar(info['is_success']):
+            # success = getattr(self, 'achieved_sg{}'.format(int(info['goal_index'])))(achieved_goal,goal, info['gripper_width'])
+            #if last sg reward is 0 anyway doesn't matter if goal reached or not
+            # return -1.0 if success == False  else self.subgoal_rewards[info['goal_index']]
+            return -1.0 if info['is_success'] == 0  else self.subgoal_rewards[info['goal_index']]
+            # return -goal_distance(achieved_goal,goal) if info['is_success'] == 0  else self.subgoal_rewards[info['goal_index']]
+        else:
+            rews = np.zeros(len(achieved_goal), dtype=np.float32)
+            for i in range(len(rews)):
+                success = getattr(self, 'achieved_sg{}'.format(int(info['goal_index'][i][0])))(achieved_goal[i],goal[i], info['gripper_width'][i])
+                # rews[i] = self.subgoal_rewards[int(info['goal_index'][i][0])] if success else -1.0
+                # rews[i] = -0.0 if success else -1.0
+                # rews[i] = -0.0 if success else -goal_distance(achieved_goal[i],goal[i])
+                rews[i] = self.subgoal_rewards[int(info['goal_index'][i][0])] if success else -1.0#goal_distance(achieved_goal[i],goal[i])
+            # print(rews)
+            return rews
 
         #######################################################################################
         ####CANT DO THIS FOR ER, IS_SUCCESS WILL HAVE NO RELEVANCE TOWARDS SUBSTITUTED GOAL####
@@ -215,7 +290,7 @@ class FetchEnv(robot_env.RobotEnv):
             'achieved_goal': achieved_goal.copy(),
             'desired_goal': self.goal.copy(),
             # 'goal_index': self.goal_index,
-            'desired_goals': self.goals.copy(),
+            # 'desired_goals': self.goals.copy(),
             # 'desired_goal': self.goals.copy(),
         }
 
@@ -254,22 +329,22 @@ class FetchEnv(robot_env.RobotEnv):
         self.sim.forward()
         return True
 
-    def _sample_subgoal(self, sg_ind, object_pos=None):
-        if object_pos is None:
-            object_pos = self.sim.data.get_site_xpos('object0')
+    # def _sample_subgoal(self, sg_ind, object_pos=None):
+    #     if object_pos is None:
+    #         object_pos = self.sim.data.get_site_xpos('object0')
 
-        #3 subgoals:
-        if sg_ind == 0:
-            sg0 = object_pos.copy()
-            sg0[2] += 0.025
-            return sg0
-        elif sg_ind == 1:
-            sg1 = object_pos.copy()
-            sg1[2] -= 0.025
-            return sg1
-        else:
-            print("Goal index {} is either static or out of range")
-            return 0
+    #     #3 subgoals:
+    #     if sg_ind == 0:
+    #         sg0 = object_pos.copy()
+    #         sg0[2] += 0.025
+    #         return sg0
+    #     elif sg_ind == 1:
+    #         sg1 = object_pos.copy()
+    #         # sg1[2] -= 0.025
+    #         return sg1
+    #     else:
+    #         print("Goal index {} is either static or out of range")
+    #         return 0
 
     #probably not worth it, not too big of a deal - could cause issues if calling sample_goals for some other reason
     #Don't sample first two subgoals, only sample end goal and set goals to [empty,empty,goal]
@@ -282,13 +357,13 @@ class FetchEnv(robot_env.RobotEnv):
             #preset subgoals
             if self.num_goals > 1:
                 subgoal1 = object_pos.copy()
-                height_off = 0.05 if self.num_goals == 2 else 0.025 
+                height_off = 0.01 if self.num_goals == 2 else 0.025#0.04
                 subgoal1[2] += height_off
                 goals.append(subgoal1)
             #TODO: incorporate clasp object for goal 2
             if self.num_goals == 3:
                 subgoal2 = object_pos.copy()
-                subgoal2[2] -= 0.025
+                # subgoal2[2] -= 0.025
                 # goal2[2] -= 0.01
                 goals.append(subgoal2)
 
@@ -302,26 +377,29 @@ class FetchEnv(robot_env.RobotEnv):
         goals.append(goal.copy())
         return np.asarray(goals)
 
-    def _sample_goal(self):
-        if self.has_object:
-            goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range, size=3)
-            goal += self.target_offset
-            goal[2] = self.height_offset
-            if self.target_in_the_air and self.np_random.uniform() < 0.5:
-                goal[2] += self.np_random.uniform(0, 0.45)
-        else:
-            goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(-0.15, 0.15, size=3)
-        return goal.copy()
+    # def _sample_goal(self):
+    #     if self.has_object:
+    #         goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range, size=3)
+    #         goal += self.target_offset
+    #         goal[2] = self.height_offset
+    #         if self.target_in_the_air and self.np_random.uniform() < 0.5:
+    #             goal[2] += self.np_random.uniform(0, 0.45)
+    #     else:
+    #         goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(-0.15, 0.15, size=3)
+    #     return goal.copy()
 
-    # def _is_success(self, achieved_goal, desired_goal,goal_index):
-    #     d = goal_distance(achieved_goal, desired_goal)
+    def _is_success(self, achieved_goal, desired_goal,goal_index,gripper_width):
+        return float(getattr(self, 'achieved_sg{}'.format(int(goal_index)))(achieved_goal,desired_goal, gripper_width))
 
-    #     # hardcode necessity for subgoal 2 gripper constraint
-    #     if goal_index == 1:
-    #         gripper_width = self.sim.data.get_joint_qpos('robot0:l_gripper_finger_joint') + self.sim.data.get_joint_qpos('robot0:r_gripper_finger_joint')
-    #         if gripper_width > 0.052:
-    #             return 0.0
-    #     return (d < self.distance_threshold).astype(np.float32)
+        # d = goal_distance(achieved_goal, desired_goal)
+        # # print(goal_index, d)
+        # # hardcode necessity for subgoal 2 gripper constraint
+        # # if goal_index == 1:
+        # if goal_index == 0:
+        #     gripper_width = self.sim.data.get_joint_qpos('robot0:l_gripper_finger_joint') + self.sim.data.get_joint_qpos('robot0:r_gripper_finger_joint')
+        #     if gripper_width < 0.052:
+        #         return 0.0
+        # return (d < self.distance_threshold).astype(np.float32)
 
         # return (d < self.distance_threshold).astype(np.float32)
 
@@ -344,104 +422,123 @@ class FetchEnv(robot_env.RobotEnv):
         if self.has_object:
             self.height_offset = self.sim.data.get_site_xpos('object0')[2]
 
-    def get_current_subgoal(self, gripper_pos, object_pos, end_effector_pos):
-        height_off = gripper_pos[2] - object_pos[2]
-        horiz_off = np.linalg.norm(gripper_pos[:2] - object_pos[:2], axis=-1)
-        gripper_width = sum(end_effector_pos)
-        # print(object_pos)
-        # print("height", height_off)
-        # print("horiz", horiz_off)
-        # print("width", gripper_width)
-        # print(gripper_pos[1] - end_effector_pos[0],object_pos[1] - 0.02, object_pos[1] + 0.02,gripper_pos[1] + end_effector_pos[1])
-        # print(gripper_pos[0] - object_pos[0])
-
-        # In zone around object
-        if horiz_off < 0.075 and height_off < 0.075:
-            # Holding object
-            #if object boundaries between end effectors, end effector width small enough to grasp object and 
-            # print(gripper_pos[1], object_pos[1], end_effector_pos)
-            # print(gripper_pos[1] + end_effector_pos[0], object_pos[1] + 0.015, object_pos[1] - 0.015, gripper_pos[1] - end_effector_pos[1])
-            # if gripper_pos[1] + end_effector_pos[0] > object_pos[1] + 0.015 and gripper_pos[1] - end_effector_pos[1] < object_pos[1] - 0.015:
-            #     print("between")
-            # if sum(end_effector_pos) < 0.052:
-            #     print("grasping")
-            # if height_off < .02:
-            #     print("low enough")
-            # if -0.01 < gripper_pos[0] - object_pos[0] < 0.01:
-            #     print("in line")
-            if gripper_pos[1] + end_effector_pos[0] > object_pos[1] + 0.015 and gripper_pos[1] - end_effector_pos[1] < object_pos[1] - 0.015 and sum(end_effector_pos) < 0.052 and height_off < .02 and -0.01 < gripper_pos[0] - object_pos[0] < 0.01:
-            # if gripper_width < 0.052 and horiz_off < 0.001 and height_off < 0.001:
-                # print("goal 2")
-                return 2
-            # print("goal 1")
-            return 1
-        # else:
-        # print("goal 0")
-        return 0
-        # return 0
-
-    # def holding_object(self, gripper_pos, object_pos, end_effector_pos):
-    #     return gripper_pos[1] - end_effector_pos[0] < object_pos[1] - 0.02 and gripper_pos[1] + end_effector_pos[1] > object_pos[1] + 0.02 and sum(end_effector_pos) < 0.052 and 
+    # def get_current_subgoal(self, gripper_pos, object_pos, end_effector_pos):
+    #     #SIMPLE SG ATTEMPT
 
 
-    def _update_goal_status(self, obs):
-        # action/pos coords = [forward/backward,side/side,up/down,gripper]
-        # print(obs)
-        gripper_pos = obs['observation'][:3]
-        object_pos = obs['observation'][3:6]
-        end_effector_pos = obs['observation'][9:11]
-        # gripper_width = sum(obs['observation'][9:11])
-        # print(gripper_pos)
-        # print(obs['observation'][9])
-        # print(obs['observation'][10])
-        # print(self.goals)
-        # print(object_pos)
+
+    #     #COMPLEX SG ATTEMPT
+    #     height_off = gripper_pos[2] - object_pos[2]
+    #     horiz_off = np.linalg.norm(gripper_pos[:2] - object_pos[:2], axis=-1)
+    #     gripper_width = sum(end_effector_pos)
+    #     print(height_off)
+    #     print(horiz_off)
+    #     print(np.linalg.norm(gripper_pos - object_pos, axis=-1))
+    #     print(np.linalg.norm(np.array([horiz_off,height_off]), axis=-1))
+    #     # print(object_pos)
+    #     # print("height", height_off)
+    #     # print("horiz", horiz_off)
+    #     # print("width", gripper_width)
+    #     # print(gripper_pos[1] - end_effector_pos[0],object_pos[1] - 0.02, object_pos[1] + 0.02,gripper_pos[1] + end_effector_pos[1])
+    #     # print(gripper_pos[0] - object_pos[0])
+
+    #     # In zone around object
+    #     # if horiz_off < 0.075 and height_off < 0.075:
+    #     # if horiz_off < 0.02 and height_off < 0.04:
+    #     if horiz_off < 0.02 and 0.0 < height_off < 0.04:
+    #         # Holding object
+    #         #if object boundaries between end effectors, end effector width small enough to grasp object and 
+    #         # print(gripper_pos[1], object_pos[1], end_effector_pos)
+    #         # print(gripper_pos[1] + end_effector_pos[0], object_pos[1] + 0.015, object_pos[1] - 0.015, gripper_pos[1] - end_effector_pos[1])
+    #         # if gripper_pos[1] + end_effector_pos[0] > object_pos[1] + 0.015 and gripper_pos[1] - end_effector_pos[1] < object_pos[1] - 0.015:
+    #         #     print("between")
+    #         # if sum(end_effector_pos) < 0.052:
+    #         #     print("grasping")
+    #         # if height_off < .02:
+    #         #     print("low enough")
+    #         # if -0.01 < gripper_pos[0] - object_pos[0] < 0.01:
+    #         #     print("in line")
+    #         if gripper_pos[1] + end_effector_pos[0] > object_pos[1] + 0.015 and gripper_pos[1] - end_effector_pos[1] < object_pos[1] - 0.015 and sum(end_effector_pos) < 0.052 and height_off < .025 and -0.015 < gripper_pos[0] - object_pos[0] < 0.015:
+    #         # if gripper_pos[1] + end_effector_pos[0] > object_pos[1] + 0.015 and gripper_pos[1] - end_effector_pos[1] < object_pos[1] - 0.015 and sum(end_effector_pos) < 0.052 and height_off < .025 and -0.015 < gripper_pos[0] - object_pos[0] < 0.015:
+    #         # if gripper_pos[1] + end_effector_pos[0] > object_pos[1] + 0.015 and gripper_pos[1] - end_effector_pos[1] < object_pos[1] - 0.015 and sum(end_effector_pos) < 0.052 and height_off < .02 and -0.01 < gripper_pos[0] - object_pos[0] < 0.01:
+    #         # if gripper_width < 0.052 and horiz_off < 0.001 and height_off < 0.001:
+    #             # print("goal 2")
+    #             return 2
+    #         # print("goal 1")
+    #         return 1
+    #     # else:
+    #     # print("goal 0")
+    #     return 0
+    #     # return 0
+
+    # # def holding_object(self, gripper_pos, object_pos, end_effector_pos):
+    # #     return gripper_pos[1] - end_effector_pos[0] < object_pos[1] - 0.02 and gripper_pos[1] + end_effector_pos[1] > object_pos[1] + 0.02 and sum(end_effector_pos) < 0.052 and 
 
 
-        ag = obs['achieved_goal']
-        g = obs['desired_goal']
+    # def _update_goal_status(self, obs):
+    #     # action/pos coords = [forward/backward,side/side,up/down,gripper]
+    #     # print(obs)
+    #     gripper_pos = obs['observation'][:3]
+    #     object_pos = obs['observation'][3:6]
+    #     end_effector_pos = obs['observation'][9:11]
+    #     # gripper_width = sum(obs['observation'][9:11])
+    #     # print(gripper_pos)
+    #     # print(obs['observation'][9])
+    #     # print(obs['observation'][10])
+    #     # print(self.goals)
+    #     # print(object_pos)
+
+
+    #     ag = obs['achieved_goal']
+    #     g = obs['desired_goal']
  
-        #Get current subgoal we should want to achieve given post-action observation
-        curr_sg = self.get_current_subgoal(gripper_pos,object_pos,end_effector_pos)
+    #     #Get current subgoal we should want to achieve given post-action observation
+    #     curr_sg = self.get_current_subgoal(gripper_pos,object_pos,end_effector_pos)
+    #     # print(obs)
+    #     # print(obs['achieved_goal'])
+    #     # print(obs['desired_goal'])
+    #     # print(self.goal_index, curr_sg, getattr(self, 'achieved_sg{}'.format(self.goal_index))(obs['achieved_goal'],obs['desired_goal'], end_effector_pos))
 
-        # #If current subgoal is less than goal index we know we backtracked, no success or reward
-        if curr_sg < self.goal_index:
-            # print("1")
-            self.goal_index = curr_sg
-            self.goals[curr_sg] = self._sample_subgoal(curr_sg, object_pos)
-            self.goal = self.goals[self.goal_index]
-            return 0.0, -1.0
+    #     # #If current subgoal is less than goal index we know we backtracked, no success or reward
+    #     if curr_sg < self.goal_index:
+    #         # print("1")
+    #         self.goal_index = curr_sg
+    #         self.goals[curr_sg] = self._sample_subgoal(curr_sg, object_pos)
+    #         self.goal = self.goals[self.goal_index]
+    #         return 0.0, -1.0
 
-        # #if current subgoal is same as goal index, we know we're on the same track
-        if curr_sg == self.goal_index:
-            # print("2")
-            if curr_sg == self.num_goals-1:
-                # print(obs['achieved_goal'])
-                # print(obs['desired_goal'])
-                d = goal_distance(obs['achieved_goal'], obs['desired_goal'])
-                if d < self.distance_threshold:
-                    rew = self.subgoal_rewards[self.num_goals-1] if self.goals_reached < self.num_goals else -0.0
-                    self.goals_reached = 3
-                    return 1.0, rew
-                return 0.0, -1.0
-            self.goals[curr_sg] = self._sample_subgoal(curr_sg, object_pos)
-            self.goal = self.goals[self.goal_index]
-            return 0.0, -1.0
+    #     # #if current subgoal is same as goal index, we know we're on the same track
+    #     if curr_sg == self.goal_index:
+    #         # print("2")
+    #         if curr_sg == self.num_goals-1:
+    #             # print(obs['achieved_goal'])
+    #             # print(obs['desired_goal'])
+    #             d = goal_distance(obs['achieved_goal'], obs['desired_goal'])
+    #             if d < self.distance_threshold:
+    #                 rew = self.subgoal_rewards[self.num_goals-1] if self.goals_reached < self.num_goals else -0.0
+    #                 self.goals_reached = 3
+    #                 return 1.0, rew
+    #             return 0.0, -1.0
+    #         self.goals[curr_sg] = self._sample_subgoal(curr_sg, object_pos)
+    #         self.goal = self.goals[self.goal_index]
+    #         return 0.0, -1.0
 
-        # if current subgoal is greater than goal index, we have achieved a subgoal
-        if curr_sg > self.goal_index:
-            # print("3")
-            self.goal_index = curr_sg
-            # If not on final goal, resample subgoal in case object has moved
-            if curr_sg < self.num_goals-1:
-                self.goals[curr_sg] = self._sample_subgoal(curr_sg, object_pos)
-            self.goal = self.goals[self.goal_index]
-            # First time we've reached goal
-            if self.goals_reached < curr_sg:
-                self.goals_reached = curr_sg
-                return 1.0, self.subgoal_rewards[curr_sg-1]
-            #been here before
-            return 1.0, -0.0
+    #     # if current subgoal is greater than goal index, we have achieved a subgoal
+    #     if curr_sg > self.goal_index:
+    #         # print("3")
+    #         self.goal_index = curr_sg
+    #         # If not on final goal, resample subgoal in case object has moved
+    #         if curr_sg < self.num_goals-1:
+    #             self.goals[curr_sg] = self._sample_subgoal(curr_sg, object_pos)
+    #         self.goal = self.goals[self.goal_index]
+    #         # First time we've reached goal
+    #         if self.goals_reached < curr_sg:
+    #             self.goals_reached = curr_sg
+    #             return 0.0, self.subgoal_rewards[curr_sg-1]
+    #         #been here before
+    #         # print("often?")
+    #         # return 1.0, -0.0
+    #         return 0.0, -1.0
 
         # #SG 1/2 requirements
         # if horiz_off < 0.075 and height_off < 0.075:
