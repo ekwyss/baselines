@@ -96,8 +96,8 @@ class Policies:
 			for key,val in self.policies[i].logs(prefixes[i]):
 				logger.record_tabular(key, mpi_average(val))
 
-	def step(self,obs,goal_indices):
-		actions = self.get_actions(obs['observation'], obs['achieved_goal'], obs['desired_goal'],goal_indices)
+	def step(self,obs):
+		actions = self.get_actions(obs['observation'], obs['achieved_goal'], obs['desired_goal'])
 		return actions, None, None, None
 
 	# def get_actions(self, o, ag, g, g_ind, noise_eps=0., random_eps=0., use_target_net=False, compute_Q=False):

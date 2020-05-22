@@ -13,6 +13,7 @@ from baselines.common.cmd_util import common_arg_parser, parse_unknown_args, mak
 from baselines.common.tf_util import get_session
 from baselines import logger
 from importlib import import_module
+from baselines.her.checkpoint import Checkpoint
 
 try:
     from mpi4py import MPI
@@ -61,7 +62,7 @@ def train(args, extra_args):
     alg_kwargs = get_learn_function_defaults(args.alg, env_type)
     alg_kwargs.update(extra_args)
 
-    env = build_env(args)
+    env = build_env(args, extra_args['c_her_args'])
     if args.save_video_interval != 0:
         env = VecVideoRecorder(env, osp.join(logger.get_dir(), "videos"), record_video_trigger=lambda x: x % args.save_video_interval == 0, video_length=args.save_video_length)
 
@@ -83,7 +84,7 @@ def train(args, extra_args):
     return model, env
 
 
-def build_env(args):
+def build_env(args, checkpoint_args):
     ncpu = multiprocessing.cpu_count()
     if sys.platform == 'darwin': ncpu //= 2
     nenv = args.num_env or ncpu
@@ -110,7 +111,7 @@ def build_env(args):
         get_session(config=config)
 
         flatten_dict_observations = alg not in {'her'}
-        env = make_vec_env(env_id, env_type, args.num_env or 1, seed, reward_scale=args.reward_scale, flatten_dict_observations=flatten_dict_observations, env_kwargs = {'num_goals' : 3, 'subgoal_rewards' : np.array([10.,10.,0.]), 'use_g_ind' : True})
+        env = make_vec_env(env_id, env_type, args.num_env or 1, seed, reward_scale=args.reward_scale, flatten_dict_observations=flatten_dict_observations, env_kwargs = checkpoint_args)#{'num_goals' : 3, 'subgoal_rewards' : np.array([10.,10.,0.]), 'use_g_ind' : True})
 
         if env_type == 'mujoco':
             env = VecNormalize(env, use_tf=True)
@@ -198,13 +199,13 @@ def configure_logger(log_path, **kwargs):
     else:
         logger.configure(**kwargs)
 
-
-def main(args):
+def run(args, checkpoints):
     # configure logger, disable logging in child MPI processes (with rank > 0)
 
     arg_parser = common_arg_parser()
     args, unknown_args = arg_parser.parse_known_args(args)
     extra_args = parse_cmdline_kwargs(unknown_args)
+    extra_args['c_her_args'] = {'checkpoints':checkpoints}#[Checkpoint(sample_sg_1,achieved_sg0,achieved_goal_sg_0,0,0.0),Checkpoint(sample_sg_1,achieved_sg1,achieved_goal_sg_1,1,0.0),Checkpoint(sample_sg_2,achieved_sg2,achieved_goal_sg_2,2,0.0)]}#, 'num_goals' : 3, 'checkpoint_rewards' : [0.,0.,0.], 'use_g_ind': True}
 
     if MPI is None or MPI.COMM_WORLD.Get_rank() == 0:
         rank = 0
@@ -227,17 +228,15 @@ def main(args):
         dones = np.zeros((1,))
 
         episode_rew = np.zeros(env.num_envs) if isinstance(env, VecEnv) else np.zeros(1)
-        goal_ind = np.zeros(env.num_envs, dtype=int)
         # num_goals = model.num_goals
         while True:
             if state is not None:
-                actions, _, state, _ = model.step(obs, goal_ind, S=state, M=dones)
+                actions, _, state, _ = model.step(obs, S=state, M=dones)
             else:
-                actions, _, _, _ = model.step(obs, goal_ind)
+                actions, _, _, _ = model.step(obs)
 
             obs, rew, done, info = env.step(actions)
-            for i in range(env.num_envs):
-                goal_ind[i] = info[i]['goal_index']
+
             # if rew != -1 and goal_ind < num_goals-1:
                 # goal_ind += 1
             episode_rew += rew
@@ -247,12 +246,11 @@ def main(args):
                 for i in np.nonzero(done)[0]:
                     print('episode_rew={}'.format(episode_rew[i]))
                     episode_rew[i] = 0
-                    goal_ind[i] = [0]
 
     env.close()
 
     return model
 
-if __name__ == '__main__':
-    main(sys.argv)
+# if __name__ == '__main__':
+#     run(sys.argv)
 

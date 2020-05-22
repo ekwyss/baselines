@@ -1,0 +1,1 @@
+Logging to /home/eric/baselines/policies/original_her/nodemo_shaped_rews/results3

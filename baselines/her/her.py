@@ -13,6 +13,7 @@ from baselines.her.rollout import RolloutWorker
 
 from baselines.her.policies import Policies
 import pickle
+# import time
 
 def mpi_average(value):
     if not isinstance(value, list):
@@ -34,18 +35,24 @@ def train(*, policies, rollout_worker, evaluator,
     logger.info("Training...")
     best_success_rate = -1
 
-    if policies.policies[0].bc_loss == 1: policies.init_demo_buffer(demo_file) #initialize demo buffer if training with demonstrations
+    # if policies.policies[0].bc_loss == 1: policies.init_demo_buffer(demo_file) #initialize demo buffer if training with demonstrations
+    if policies.bc_loss == 1: policies.init_demo_buffer(demo_file) #initialize demo buffer if training with demonstrations
 
     # num_timesteps = n_epochs * n_cycles * rollout_length * number of rollout workers
     for epoch in range(n_epochs):
         # train
         rollout_worker.clear_history()
         for _ in range(n_cycles):
+            # start = time.time()
             episode = rollout_worker.generate_rollouts()
-            policies.store_episodes(episode)
+            # print("gen rollouts: ", time.time()-start)
+            policies.store_episode(episode)
+            # print("store eps ", time.time()-start)
             for _ in range(n_batches):
                 policies.train()
-            policies.update_target_nets()
+            # print("train batches", time.time()-start)
+            policies.update_target_net()
+            # print("update_target_nets: ", time.time()-start)
 
         # test
         evaluator.clear_history()
@@ -58,7 +65,9 @@ def train(*, policies, rollout_worker, evaluator,
             logger.record_tabular(key, mpi_average(val))
         for key, val in rollout_worker.logs('train'):
             logger.record_tabular(key, mpi_average(val))
-        policies.record_logs(logger)
+        for key, val in policies.logs():
+            logger.record_tabular(key, mpi_average(val))
+        # policies.record_logs(logger)
 
         if rank == 0:
             logger.dump_tabular()
@@ -117,7 +126,7 @@ def learn(*, network, env, total_timesteps,
     params.update(**override_params)  # makes it possible to override any parameter
     with open(os.path.join(logger.get_dir(), 'params.json'), 'w') as f:
          json.dump(params, f)
-    params = config.prepare_params(params)
+    params = config.prepare_params(params, kwargs['c_her_args'])
     params['rollout_batch_size'] = env.num_envs
 
     if demo_file is not None:
@@ -141,7 +150,11 @@ def learn(*, network, env, total_timesteps,
     #if we had subgoals with different dims we would have to change that here/in configure_dims
     # then when initializing each ddpg agent we pass in the appropriate dims
     dims = config.configure_dims(params)
-    policies = Policies(1,dims,params,clip_return, num_goals=3)
+    # policies = Policies(1,dims,params,clip_return, num_goals=3)
+    #to be compatible with old scopes when merged with multiplepolicy case
+    params['ddpg_params']['scope'] = "ddpg0"
+    # params['num_goals'] = 3
+    policies = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return)
     if load_path is not None:
         tf_util.load_variables(load_path)
 

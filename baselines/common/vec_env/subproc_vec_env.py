@@ -68,6 +68,10 @@ class SubprocVecEnv(VecEnv):
             remote.close()
 
         self.remotes[0].send(('get_spaces_spec', None))
+        print(self.remotes)
+        print(ctx)
+        print(self.ps)
+        quit()
         observation_space, action_space, self.spec = self.remotes[0].recv().x
         self.viewer = None
         VecEnv.__init__(self, nenvs, observation_space, action_space)

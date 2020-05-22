@@ -38,8 +38,6 @@ def load_results(file):
     result = {}
     for idx, key in enumerate(keys):
         result[key] = data[:, idx]
-    if len(result['epoch']) == 40:
-        result['epoch'] = result['epoch'] * 2.5
     return result
 
 
@@ -162,14 +160,12 @@ for filedir1 in args.filedirs1:
             success_rates1.append(data1['FetchPickAndPlace-v1']['her-sparse'][0][1])
             # print(filedir, data1)
         print(filedir1)
-    if filedir1=="/home/eric/baselines/policies/multiple_policy/10_10_0_100demo_modsg/":
+    if filedir1=="/home/eric/baselines/policies/multiple_policy/10_10_0_modsg/10_10_0_100demo_modsg/":
         sr_diff = []
         for i in range(len(success_rates1[0]) - len(success_rates1[1])):
             sr_diff.append(success_rates1[0][i+len(success_rates1[1])])
         success_rates1[1] = np.concatenate((success_rates1[1],np.array(sr_diff)))
         data1['FetchPickAndPlace-v1']['her-sparse'][0] = (np.arange(1,100+1), np.mean(success_rates1, axis=0))
-    elif filedir1 == "/home/eric/baselines/policies/multiple_policy/10_10_0_10demo_modsg/":
-        data1['FetchPickAndPlace-v1']['her-sparse'][0] = (np.arange(1,83+1), np.mean(success_rates1, axis=0))
     else:
         # data1['FetchPickAndPlace-v1']['her-sparse'][0] = (np.arange(1,args.num_epochs+1), np.mean(success_rates1, axis=0))
         data1['FetchPickAndPlace-v1']['her-sparse'][0] = (data1['FetchPickAndPlace-v1']['her-sparse'][0][0], np.mean(success_rates1, axis=0))
@@ -230,11 +226,14 @@ for env_id in sorted(data1.keys()):
                 ynew.append(ys[i][:args.num_epochs])
             xs = np.array(xnew)
             ys = np.array(ynew)
-
+            # if xs.shape[1] == 40:
+            #     xs *= 5
+            # else:
+            xs *= 2
             plt.plot(xs[0], np.nanmedian(ys, axis=0), label=label)
             plt.fill_between(xs[0], np.nanpercentile(ys, 25, axis=0), np.nanpercentile(ys, 75, axis=0), alpha=0.25)
     plt.title(args.title, fontsize=16)
-    plt.xlabel('Epoch', fontsize=16)
+    plt.xlabel('Timestep (1000s)', fontsize=16)
     plt.ylabel('Median Success Rate', fontsize=16)
     plt.ylim(-0.01,1.0)
     plt.legend(loc='lower right', prop=fontP)
@@ -253,4 +252,5 @@ for env_id in sorted(data1.keys()):
     #     plt.savefig(os.path.join("/home/eric/baselines/policies/plots/", 'fig_{}_{}.png'.format(env_id, file_ending)))
     plt.savefig(args.outfile)
 
- # python3.6 baselines/baselines/her/experiment/plot.py -filedirs1 /home/eric/baselines/policies/goalind/5_5_20_nodemo_nosgrewinER/  /home/eric/baselines/policies/goalind/5_5_20_1demo_nosgrewinER/  /home/eric/baselines/policies/goalind/5_5_20_10demo_nosgrewinER/ /home/eric/baselines/policies/goalind/5_5_20_100demo_nosgrewinER/ /home/eric/baselines/policies/original_her/100demo/ /home/eric/baselines/policies/original_her/nodemo/ -num_epochs 100 -outfile /home/eric/baselines/policies/plots/GripConstraint_5_5_20_noERsgrew_comp.png
+
+# python3.6 baselines/her/experiment/plot.py -filedirs1 /home/eric/baselines/policies/original_her/100demo/ /home/eric/baselines/policies/original_her/10demo/ /home/eric/baselines/policies/original_her/2demo/ /home/eric/baselines/policies/original_her/nodemo/ -num_epochs 100 -outfile /home/eric/baselines/plots_post_426/origdemocomp_timesteps.png -labels 100demo 10demo 2demo nodemo -title "Original HER Demo Comparison"

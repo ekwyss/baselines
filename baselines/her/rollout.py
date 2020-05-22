@@ -76,7 +76,9 @@ class RolloutWorker:
             #     noise_eps=self.noise_eps if not self.exploit else 0.,
             #     random_eps=self.random_eps if not self.exploit else 0.,
             #     use_target_net=self.use_target_net)
-
+            print(self.dims)
+            print(o, ag, self.g)
+            quit()
             policy_output = self.policies.get_actions(
                 o, ag, self.g,
                 compute_Q=self.compute_Q,
@@ -160,6 +162,7 @@ class RolloutWorker:
                        #sgt=consistent_sgss)
                        # gs=self.goals.copy())
         for key, value in zip(self.info_keys, info_values):
+            print(key)
             episode['info_{}'.format(key)] = value
 
         # stats

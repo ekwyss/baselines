@@ -52,6 +52,7 @@ DEFAULT_PARAMS = {
     'demo_batch_size': 128, #number of samples to be used from the demonstrations buffer, per mpi thread 128/1024 or 32/256
     'prm_loss_weight': 0.001, #Weight corresponding to the primary loss
     'aux_loss_weight':  0.0078, #Weight corresponding to the auxilliary loss also called the cloning loss
+    # 'num_goals': 1,
 }
 
 
@@ -70,14 +71,13 @@ def cached_make_env(make_env):
     return CACHED_ENVS[make_env]
 
 
-def prepare_params(kwargs):
+def prepare_params(kwargs, c_her_args):
     # DDPG params
     ddpg_params = dict()
     env_name = kwargs['env_name']
 
     def make_env(subrank=None):
-        env_kwargs = {'num_goals' : 3, 'subgoal_rewards' : np.array([10.,10.,0.]), 'use_g_ind' : True}
-        env = gym.make(env_name, **env_kwargs)
+        env = gym.make(env_name, **c_her_args)
         if subrank is not None and logger.get_dir() is not None:
             try:
                 from mpi4py import MPI
@@ -131,13 +131,13 @@ def configure_her(params):
     # goal_indexes = params['goal_indexes']
     # policy_index = params['policy_index']
 
-    #can add policy index here for subgoal rewards****
     def reward_fun(ag_2, g, info):  # vectorized
         return env.compute_reward(achieved_goal=ag_2, desired_goal=g, info=info)
 
     # Prepare configuration for HER.
     her_params = {
         'reward_fun': reward_fun,
+        'num_goals': len(params['c_her_args']['checkpoints']),
         # 'policy_indexes': goal_indexes,
         # 'policy_index': policy_index,
     }
@@ -181,6 +181,7 @@ def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True):
                         'demo_batch_size': params['demo_batch_size'],
                         'prm_loss_weight': params['prm_loss_weight'],
                         'aux_loss_weight': params['aux_loss_weight'],
+                        'num_goals': len(params['c_her_args']['checkpoints']),
                         })
     ddpg_params['info'] = {
         'env_name': params['env_name'],

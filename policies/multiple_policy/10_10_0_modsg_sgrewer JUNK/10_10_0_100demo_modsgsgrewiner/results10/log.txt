@@ -1,0 +1,1 @@
+Logging to /home/eric/baselines/policies/multiple_policy/10_10_0_100demo_modsgsgrewiner/results10

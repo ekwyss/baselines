@@ -1,16 +1,17 @@
 import gym
 import numpy as np
-
+from baselines.orig_formulation_edit import checkpoints
 
 """Data generation for the case of a single block pick and place in Fetch Env"""
 
 actions = []
 observations = []
 infos = []
-NUMGOALS = 3
+NUMGOALS = len(checkpoints)
 
 def main():
-    env = gym.make('FetchPickAndPlace-v1', **{'num_goals' : 3, 'subgoal_rewards' : np.array([0.,0.,0.],dtype=np.float32), 'use_g_ind' : True})
+    # env = gym.make('FetchPickAndPlace-v1', **{'num_goals' : 3, 'subgoal_rewards' : np.array([0.,0.,0.],dtype=np.float32), 'use_g_ind' : True})
+    env = gym.make('FetchPickAndPlace-v1', **{'checkpoints':checkpoints})
     numItr = 100
     initStateSpace = "random"
     env.reset()

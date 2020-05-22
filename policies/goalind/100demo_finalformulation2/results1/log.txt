@@ -1,0 +1,1 @@
+Logging to /home/eric/baselines/policies/goalind/100demo_finalformulation2/results1

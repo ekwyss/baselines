@@ -1,0 +1,130 @@
+Logging to /home/eric/baselines/policies/goalind/neg100_neg100_0_100demo_samesg/results1
+T: 50
+_Q_lr: 0.001
+_action_l2: 1.0
+_batch_size: 256
+_buffer_size: 1000000
+_clip_obs: 200.0
+_hidden: 256
+_layers: 3
+_max_u: 1.0
+_network_class: baselines.her.actor_critic:ActorCritic
+_norm_clip: 5
+_norm_eps: 0.01
+_pi_lr: 0.001
+_polyak: 0.95
+_relative_goals: False
+_scope: ddpg
+aux_loss_weight: 0.0078
+batch_size: 1024
+bc_loss: 1
+ddpg_params: {'buffer_size': 1000000, 'hidden': 256, 'layers': 3, 'network_class': 'baselines.her.actor_critic:ActorCritic', 'polyak': 0.95, 'batch_size': 256, 'Q_lr': 0.001, 'pi_lr': 0.001, 'norm_eps': 0.01, 'norm_clip': 5, 'max_u': 1.0, 'action_l2': 1.0, 'clip_obs': 200.0, 'scope': 'ddpg', 'relative_goals': False}
+demo_batch_size: 128
+env_name: FetchPickAndPlace-v1
+gamma: 0.98
+make_env: <function prepare_params.<locals>.make_env at 0x7f52077f8d08>
+n_batches: 40
+n_cycles: 20
+n_test_rollouts: 10
+noise_eps: 0.1
+num_cpu: 7
+num_demo: 100
+prm_loss_weight: 0.001
+q_filter: 1
+random_eps: 0.1
+replay_k: 4
+replay_strategy: future
+rollout_batch_size: 2
+test_with_polyak: False
+
+*** Warning ***
+You are running HER with just a single MPI worker. This will work, but the experiments that we report in Plappert et al. (2018, https://arxiv.org/abs/1802.09464) were obtained with --num_cpu 19. This makes a significant difference and if you are looking to reproduce those results, be aware of this. Please also refer to https://github.com/openai/baselines/issues/314 for further details.
+****************
+
+Creating a DDPG agent with action space 4 x 1.0...
+Training...
+Demo buffer size:  5000
+---------------------------------
+| epoch              | 0        |
+| p0/stats_g/mean    | 0.857    |
+| p0/stats_g/std     | 0.104    |
+| p0/stats_o/mean    | 0.241    |
+| p0/stats_o/std     | 0.102    |
+| test/episode       | 20       |
+| test/mean_Q        | -1.48    |
+| test/success_rate  | 0.15     |
+| train/episode      | 40       |
+| train/success_rate | 0.025    |
+---------------------------------
+---------------------------------
+| epoch              | 1        |
+| p0/stats_g/mean    | 0.858    |
+| p0/stats_g/std     | 0.102    |
+| p0/stats_o/mean    | 0.237    |
+| p0/stats_o/std     | 0.125    |
+| test/episode       | 40       |
+| test/mean_Q        | -2.14    |
+| test/success_rate  | 0.1      |
+| train/episode      | 80       |
+| train/success_rate | 0        |
+---------------------------------
+---------------------------------
+| epoch              | 2        |
+| p0/stats_g/mean    | 0.856    |
+| p0/stats_g/std     | 0.101    |
+| p0/stats_o/mean    | 0.236    |
+| p0/stats_o/std     | 0.128    |
+| test/episode       | 60       |
+| test/mean_Q        | -2.7     |
+| test/success_rate  | 0.1      |
+| train/episode      | 120      |
+| train/success_rate | 0.05     |
+---------------------------------
+---------------------------------
+| epoch              | 3        |
+| p0/stats_g/mean    | 0.854    |
+| p0/stats_g/std     | 0.101    |
+| p0/stats_o/mean    | 0.235    |
+| p0/stats_o/std     | 0.133    |
+| test/episode       | 80       |
+| test/mean_Q        | -3.4     |
+| test/success_rate  | 0        |
+| train/episode      | 160      |
+| train/success_rate | 0.05     |
+---------------------------------
+---------------------------------
+| epoch              | 4        |
+| p0/stats_g/mean    | 0.853    |
+| p0/stats_g/std     | 0.101    |
+| p0/stats_o/mean    | 0.236    |
+| p0/stats_o/std     | 0.135    |
+| test/episode       | 100      |
+| test/mean_Q        | -2.83    |
+| test/success_rate  | 0.25     |
+| train/episode      | 200      |
+| train/success_rate | 0.1      |
+---------------------------------
+---------------------------------
+| epoch              | 5        |
+| p0/stats_g/mean    | 0.852    |
+| p0/stats_g/std     | 0.101    |
+| p0/stats_o/mean    | 0.237    |
+| p0/stats_o/std     | 0.136    |
+| test/episode       | 120      |
+| test/mean_Q        | -3.14    |
+| test/success_rate  | 0.55     |
+| train/episode      | 240      |
+| train/success_rate | 0.05     |
+---------------------------------
+---------------------------------
+| epoch              | 6        |
+| p0/stats_g/mean    | 0.851    |
+| p0/stats_g/std     | 0.101    |
+| p0/stats_o/mean    | 0.238    |
+| p0/stats_o/std     | 0.137    |
+| test/episode       | 140      |
+| test/mean_Q        | -3.51    |
+| test/success_rate  | 0.35     |
+| train/episode      | 280      |
+| train/success_rate | 0.05     |
+---------------------------------
